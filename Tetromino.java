@@ -3,10 +3,11 @@ import java.awt.*;
 
 public class Tetromino {
     public static final int BLOCK_SIZE = 30; // Size of each block
-    private int[][] shape;
     private Color color;
     private int [][][] rotations;
     private int rotation = 0; // Current rotation state
+    private int previousRotation = 0; //Previous rotation state
+    
 
     public static final int[][][][] TETROMINOS = {
         { // I-piece
@@ -52,8 +53,8 @@ public class Tetromino {
             {{1, 1, 0}, {0, 1, 0}, {0, 1, 0}}  // 270°
         }
     };
-    
-    private static final int[][][] JLSTZ_WALL_KICKS = {
+
+    public static final int[][][] JLSTZ_WALLKICKS = {
         // 0 -> R
         {{0, 0}, {-1, 0}, {-1, 1}, {0, -2}, {-1, -2}},
         // R -> 0
@@ -72,6 +73,26 @@ public class Tetromino {
         {{0, 0}, {1, 0}, {1, 1}, {0, -2}, {1, -2}}
     };
 
+    public static final int[][][] I_WALLKICKS = {
+        // 0 -> R
+        {{0, 0}, {-2, 0}, {1, 0}, {-2, -1}, {1, 2}},
+        // R -> 0
+        {{0, 0}, {2, 0}, {-1, 0}, {2, 1}, {-1, -2}},
+        // R -> 2
+        {{0, 0}, {-1, 0}, {2, 0}, {-1, 2}, {2, -1}},
+        // 2 -> R
+        {{0, 0}, {2, 0}, {-1, 0}, {2, 1}, {-1, -2}},
+        // 2 -> L
+        {{0, 0}, {1, 0}, {-2, 0}, {1, -2}, {-2, 1}},
+        // L -> 2
+        {{0, 0}, {2, 0}, {-1, 0}, {2, 1}, {-1, -2}},
+        // L -> 0
+        {{0, 0}, {-2, 0}, {1, 0}, {-2, -1}, {1, 2}},
+        // 0 -> L
+        {{0, 0}, {1, 0}, {-2, 0}, {1, -2}, {-2, 1}}
+    };
+
+
     public Tetromino(int index, Color color) {
         this.rotations = TETROMINOS[index];
         this.color = color;
@@ -79,16 +100,22 @@ public class Tetromino {
 
     // Rotate clockwise
     public void rotateCW() {
+        previousRotation = rotation;
         rotation = (rotation + 1) % 4; // Cycle through 0, 1, 2, 3
     }
 
     // Rotate counter-clockwise
     public void rotateCCW() {
+        previousRotation = rotation;
         rotation = (rotation + 3) % 4; // Equivalent to subtracting 1, but wraps around
     }
 
     public void rotateFlip(){
         rotation = (rotation + 2) % 4;
+    }
+
+    public void resetRotation() {
+        rotation = 0; // Reset to default rotation
     }
 
     // Get the current shape based on rotation
@@ -104,6 +131,15 @@ public class Tetromino {
         return color;
     }
 
+    // Get the current rotation state
+    public int getRotationState() {
+        return rotation;
+    }
+
+    public int getPreviousRotation(){
+        return previousRotation;
+    }
+
     // Draw the tetromino
     public void draw(Graphics g, int x, int y) {
         int[][] shape = getShape();
@@ -112,7 +148,6 @@ public class Tetromino {
                 if (shape[row][col] == 1) {
                     g.setColor(color);
                     g.fillRect(x + col * BLOCK_SIZE, y + row * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                    g.setColor(Color.BLACK);
                     g.drawRect(x + col * BLOCK_SIZE, y + row * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
                 }
             }

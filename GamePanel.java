@@ -1,4 +1,3 @@
-
 import java.awt.*;
 import java.awt.event.*;
 import java.util.LinkedList;
@@ -38,6 +37,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     GameState currentState = GameState.MAIN_MENU; // Current state of the game
     Menu menu;
     Timer gameTimer;
+    GameInterface gameInterface;
 
     private Queue<Tetromino> pieceQueue;
     private int pieceX = GRID_COLS / 2 - 2;
@@ -45,14 +45,16 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private boolean softDropActive = false;
     private boolean canHold = true;
 
+    //Countdown timer
+    private boolean isCountingdown = false;
+    private long countdownStartTime;
+    private static final String[] COUNTDOWN_TEXT = {"GO!", "SET", "READY"};
+
 
     // Enum for game states
     public enum GameState {
         MAIN_MENU, // Main menu state
-        GAME_SPRINT,      // Active game state
-        GAME_TIMETRIAL,
-        GAME_PRACTICE,
-        GAME_CHALLENGE,
+        GAME,      // Active game state
         SCORE_SCREEN, // Win screen state
         LOSE_SCREEN,//Lose screen
 
@@ -64,6 +66,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         gameTimer = new Timer();
         pieceQueue = new LinkedList<>();
         bagGenerator = new PieceBagGenerator();
+        gameInterface = new GameInterface(GRID_OFFSET_X, TOP_PANEL_HEIGHT);
         initializePieceQueue();
 
         currentPiece = pieceQueue.poll();
@@ -85,20 +88,64 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     }
 
     public void startGame() {
-        currentState = GameState.GAME_SPRINT;
+        currentState = GameState.GAME;
         restartGame();
-        gameTimer.start(); // Start the timer
         repaint();
         
     }
 
+    private void startCountdown() {
+        isCountingdown = true;
+        countdownStartTime = System.currentTimeMillis() - 1000; // Set to current time directly
+        repaint();
+    }
+
+    private void drawCountdown(Graphics g) {
+        Font originalFont = g.getFont();
+        Font countdownFont = new Font("Arial", Font.BOLD, 72);
+        g.setFont(countdownFont);
+        
+        // Calculate time elapsed and current display
+        long currentTime = System.currentTimeMillis();
+        long elapsedTime = currentTime - countdownStartTime;
+        int displayIndex = (int) Math.max(0, Math.min(3, 3 - (elapsedTime / 1000)));
+        
+        // Only draw if within valid range (including GO!)
+        if (displayIndex >= 0 && displayIndex < COUNTDOWN_TEXT.length) {
+            // Draw semi-transparent background
+            g.setColor(new Color(0, 0, 0, 128));
+            g.fillRect(0, 0, getWidth(), getHeight());
+            
+            // Draw countdown text
+            String text = COUNTDOWN_TEXT[displayIndex];
+            FontMetrics fm = g.getFontMetrics();
+            int textWidth = fm.stringWidth(text);
+            int textHeight = fm.getHeight();
+            
+            g.setColor(Color.WHITE);
+            g.drawString(text, 
+                (getWidth() - textWidth) / 2,
+                (getHeight() - textHeight) / 2 + fm.getAscent()
+            );
+        }
+        
+        g.setFont(originalFont);
+        
+        // Check if countdown is complete
+        gameTimer.stop();
+        if (elapsedTime >= 4000) { // 4 seconds total duration
+            isCountingdown = false;
+            gameTimer.start(); // Start the game timer
+        }
+    }
+
 
     private void restartGame() {
-        currentState = GameState.GAME_SPRINT;
+        currentState = GameState.GAME;
+        startCountdown();
 
         // Reset grid
         grid = new Grid();
-        
         // Reset piece queue and generator
         pieceQueue.clear();
         bagGenerator = new PieceBagGenerator(); // Reset the bag generator
@@ -126,12 +173,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         // Repaint to update the display
         repaint();
     }
-    
-
-    public void returnToMainMenu (){
-        currentState = GameState.MAIN_MENU;
-    }
-    
 
     private void initializePieceQueue() {
 
@@ -185,45 +226,18 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             );
             
             // You'll need to update other drawing methods similarly
-            drawQueue(g);
-            drawHeldPiece(g);
-            drawGhostPiece(g);
+            gameInterface.updateState(pieceQueue, heldPiece, currentPiece, pieceX, pieceY, currentState.toString(), isCountingdown);
+            gameInterface.drawQueue(g);
+            gameInterface.drawHeldPiece(g);
+            gameInterface.drawGhostPiece(g, grid);
+            gameInterface.drawStats(g, gameTimer.getFormattedTime(), grid.getPiecesPlaced(), grid.getLinesCleared());
+
+            if (isCountingdown) {
+                drawCountdown(g);
+            }
         }
     }
 
-
-    private void drawQueue(Graphics g) {
-        Tetromino[]piecesArray;
-        int startX = GAME_WIDTH + GRID_OFFSET_X + 30; // Right side panel
-        int startY = 150;              // Start Y position for the first piece in the queue
-        int spacing = 100;            // Vertical spacing between queued pieces
-    
-        // Draw the "Next Pieces" label
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 25));
-        g.drawString("Next Pieces", startX, startY - 20);
-    
-        //Draw the next pieces in the
-        piecesArray = pieceQueue.toArray(new Tetromino[0]);
-        for (int i = 0; i < piecesArray.length; i++) {
-            piecesArray[i].draw(g, startX, startY + (i * spacing)); // Draw each queued piece
-        }
-    }
-
-    private void drawHeldPiece(Graphics g) {
-        int startX = 40; // Left side panel
-        int startY = 150;
-
-        // Draw "Held Piece" label
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 25));
-        g.drawString("Held Piece", startX, startY - 20);
-
-        // Draw the held piece (if any)
-        if (heldPiece != null) {
-            heldPiece.draw(g, startX, startY);
-        }
-    }
 
     private void holdPiece() {
         if (!canHold) return; // Can only hold once per piece
@@ -260,28 +274,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         repaint();
     }
     
-
-    private void drawGhostPiece(Graphics g) {
-        int gridDrawOffset = TOP_PANEL_HEIGHT;
-        
-        int ghostY = pieceY;
-        
-        // Find the lowest valid position for the ghost piece
-        while (!checkCollision(pieceX, ghostY + 1)) {
-            ghostY++;
-        }
-        
-        // Draw the ghost piece with reduced opacity
-        Graphics2D g2d = (Graphics2D) g.create();
-        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.6f));
-        
-        currentPiece.draw(g2d, 
-            GRID_OFFSET_X + pieceX * Tetromino.BLOCK_SIZE, 
-            gridDrawOffset + ghostY * Tetromino.BLOCK_SIZE
-        );
-        
-        g2d.dispose();
-    }
 
     private void handleDAS() {
         if (lastKeyPressed == -1 && leftKeyPressed) { // Move left if last key was left
@@ -335,7 +327,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 adjustedDropInterval = dropInterval; // If soft drop is not active, use normal interval
             }
             
-            if (elapsedTime > adjustedDropInterval) {
+            if (!isCountingdown && elapsedTime > adjustedDropInterval) {
                 updateGame(); // Call the game update function
                 lastDropTime = now; // Update the last drop time to the current time
             }
@@ -345,6 +337,30 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     
     private void updateGame() {
+        // Check for game over condition first
+        if (isGameOver() && currentState != GameState.MAIN_MENU) {
+            currentState = GameState.LOSE_SCREEN;
+            gameTimer.stop();
+            Object[] options = {"Return to Main Menu", "Try Again"};
+            int choice = JOptionPane.showOptionDialog(this,
+                "Game Over!",
+                "Game Over",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                options,
+                options[0]);
+            
+            if (choice == JOptionPane.YES_OPTION) {
+                currentState = GameState.MAIN_MENU;
+                menu.resetToMainMenu(null);
+                return;
+            } else if (choice == JOptionPane.NO_OPTION) {
+                restartGame();
+                return;
+            }            
+        }
+    
         if (!checkCollision(pieceX, pieceY + 1) && currentState != GameState.MAIN_MENU) {
             pieceY++;
             currentLockDelayFrames = 0;
@@ -356,9 +372,9 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 isLockDelayActive = true;
                 currentLockDelayFrames = 0;
             }
-
+    
             currentLockDelayFrames++;
-
+    
             // Lock the piece after lock delay or max movements
             if (currentLockDelayFrames >= lockDelayFrames || movementCounter >= MAX_MOVEMENTS) {
                 grid.addPiece(currentPiece, pieceX, pieceY);
@@ -366,14 +382,12 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 spawnNewPiece();
             }
         }
-
-
-        if(grid.getLinesCleared() >= 40 && currentState == GameState.GAME_SPRINT){
+    
+        if(grid.getLinesCleared() >= 40 && currentState == GameState.GAME){
             currentState = GameState.SCORE_SCREEN;
             gameTimer.stop();
             System.out.println(gameTimer.getFormattedTime());
         }
-
     }
 
     private boolean checkCollision(int x, int y) {
@@ -384,20 +398,26 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         currentPiece = pieceQueue.poll();
         addPieceToQueue();
         
-        // Adjust initial piece position based on piece shape
-        int pieceWidth = currentPiece.getShape()[0].length;
-    
-        // Center the piece on the board
-        pieceX = (GRID_COLS - pieceWidth) / 2;  // Ensures proper centering
+        // Reset piece position to spawn position
+        pieceX = (GRID_COLS - currentPiece.getShapeWidth()) / 2;
         pieceY = 0;
         canHold = true;
-    
-        // Check for collision right after spawning
-        if (checkCollision(pieceX, pieceY) && currentState != GameState.MAIN_MENU) {
-            JOptionPane.showMessageDialog(this, "Game Over!");
-            gameTimer.stop(); // Stop the timer
-            System.exit(0);
+    }
+
+    private boolean isGameOver() {
+        // Check if the new piece collides at spawn position
+        if (checkCollision(pieceX, pieceY)) {
+            return true;
         }
+        
+        // Additionally check if any blocks are in the top row (optional but recommended)
+        for (int x = 0; x < GRID_COLS; x++) {
+            if (grid.isOccupied(0, x)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     private void hardDrop() {
@@ -504,7 +524,33 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     public void keyPressed(KeyEvent e) {
         boolean pieceWasMoved = false;
-        if (currentState != GameState.MAIN_MENU){
+
+        switch(e.getKeyCode()) {
+            case KeyEvent.VK_R:
+                restartGame();
+                break;
+            
+            case KeyEvent.VK_ESCAPE:
+                // Show confirmation popup
+                int response = JOptionPane.showConfirmDialog(
+                    null,
+                    "Do you want to return to the main menu?",
+                    "Confirm Exit",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+                );
+                
+                // Check the user's choice
+                if (response == JOptionPane.YES_OPTION) {
+                    currentState = GameState.MAIN_MENU;
+                    menu.resetToMainMenu(null);
+                }
+                break;
+        }
+
+
+
+        if (!isCountingdown && currentState != GameState.MAIN_MENU) {
             switch (e.getKeyCode()) {
                 case KeyEvent.VK_LEFT:
                     leftKeyPressed = true;
@@ -556,27 +602,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 case KeyEvent.VK_C:
                     holdPiece();
                     break;
-    
-                case KeyEvent.VK_R:
-                    restartGame();
-                    break;
-    
-                case KeyEvent.VK_ESCAPE:
-                    // Show confirmation popup
-                    int response = JOptionPane.showConfirmDialog(
-                        null,
-                        "Do you want to return to the main menu?",
-                        "Confirm Exit",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.QUESTION_MESSAGE
-                    );
-                    
-                    // Check the user's choice
-                    if (response == JOptionPane.YES_OPTION) {
-                        returnToMainMenu(); // Call method to return to main menu
-                        menu.resetToMainMenu(null);
-                    }
-                    break;
 
                 case KeyEvent.VK_T: // 'T' key for testing
                     System.out.println("Total rows: " + 20);
@@ -587,7 +612,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                     System.out.println("Current rotation state: " + rotationState);
                     
                     break;
-
             }
         
             // Reset lock delay and increment movement counter if piece was moved or rotated
@@ -598,9 +622,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         
             repaint();
         }
-        
     }
-    
 
     public void keyReleased(KeyEvent e) {
         switch (e.getKeyCode()) {

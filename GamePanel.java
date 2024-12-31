@@ -7,20 +7,23 @@ import javax.swing.*;
 
 public class GamePanel extends JPanel implements Runnable, KeyListener {
     public static final int GAME_WIDTH = 300;  // Width of main grid
-    public static final int GAME_HEIGHT = 600; // Height of grid
+    private static final int TOP_PANEL_HEIGHT = 50; // Adjust as needed
+    private static final int BOTTOM_PANEL_HEIGHT = 25; // Adjust as needed 
+    public static final int GAME_HEIGHT = 600 + TOP_PANEL_HEIGHT + BOTTOM_PANEL_HEIGHT; // Original height plus new panels
     private static final int BLOCK_SIZE = Tetromino.BLOCK_SIZE;
     private static final int GRID_ROWS = GAME_HEIGHT / BLOCK_SIZE;
     private static final int GRID_COLS = GAME_WIDTH / BLOCK_SIZE;
-    private static final int SIDE_PANEL_WIDTH = 150; // Width of side panels
+    private static final int SIDE_PANEL_WIDTH = 300; // Width of side panels
     private static final int GRID_OFFSET_X = SIDE_PANEL_WIDTH; // Offset for grid drawing and calculations
+    
     //Softdrop 
-    private int lockDelayFrames = 30;  // ~0.5 seconds at 60 FPS
+    private int lockDelayFrames = 60;  // ~0.5 seconds at 60 FPS
     private int currentLockDelayFrames = 0;
     private int movementCounter = 0;
-    private static final int MAX_MOVEMENTS = 15;
+    private static final int MAX_MOVEMENTS = 30;
     private boolean isLockDelayActive = false;
     //DAS AND ARR
-    private static final int DAS_DELAY = 5; // Delay before auto-shift starts (in frames)
+    private static final int DAS_DELAY = 4; // Delay before auto-shift starts (in frames)
     private static final int ARR_DELAY = 1; // Auto-repeat rate (in frames)
     private int dasCharge = 0;
     private boolean leftKeyPressed = false;
@@ -68,7 +71,10 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
         this.setFocusable(true);
         this.addKeyListener(this);
-        this.setPreferredSize(new Dimension(GAME_WIDTH + (2 * SIDE_PANEL_WIDTH), GAME_HEIGHT));
+        this.setPreferredSize(new Dimension(
+            GAME_WIDTH + (2 * SIDE_PANEL_WIDTH), 
+            GAME_HEIGHT
+        ));        
         this.setBackground(Color.BLACK); 
         this.setLayout(new BorderLayout());
         add(menu, BorderLayout.CENTER);
@@ -147,21 +153,38 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     public void paint(Graphics g) {
         super.paint(g);
         if (currentState == GameState.MAIN_MENU) {
-            menu.setVisible(true); // Show menu
+            menu.setVisible(true);
         } else {
-            menu.setVisible(false); // Hide menu when the game starts
-    
+            menu.setVisible(false);
+            
+            // Draw top panel
+            g.setColor(Color.BLACK);
+            g.fillRect(GRID_OFFSET_X, 0, GAME_WIDTH, TOP_PANEL_HEIGHT);
+            
+            // Draw bottom panel
+            g.setColor(Color.BLACK);
+            g.fillRect(GRID_OFFSET_X, GAME_HEIGHT - BOTTOM_PANEL_HEIGHT, GAME_WIDTH, BOTTOM_PANEL_HEIGHT);
+            
+            // Adjust grid drawing offset
+            int gridDrawOffset = TOP_PANEL_HEIGHT;
+            
             // Draw game grid
             g.setColor(Color.LIGHT_GRAY);
             for (int x = GRID_OFFSET_X; x <= GRID_OFFSET_X + GAME_WIDTH; x += BLOCK_SIZE) {
-                g.drawLine(x, 0, x, GAME_HEIGHT);
+                g.drawLine(x, gridDrawOffset, x, GAME_HEIGHT - BOTTOM_PANEL_HEIGHT);
             }
-            for (int y = 0; y <= GAME_HEIGHT; y += BLOCK_SIZE) {
+            for (int y = gridDrawOffset; y <= GAME_HEIGHT - BOTTOM_PANEL_HEIGHT; y += BLOCK_SIZE) {
                 g.drawLine(GRID_OFFSET_X, y, GRID_OFFSET_X + GAME_WIDTH, y);
             }
     
-            grid.draw(g, GRID_OFFSET_X);
-            currentPiece.draw(g, GRID_OFFSET_X + pieceX * BLOCK_SIZE, pieceY * BLOCK_SIZE);
+            // Adjust grid and piece drawing to account for top panel
+            grid.draw(g, GRID_OFFSET_X, gridDrawOffset);
+            currentPiece.draw(g, 
+                GRID_OFFSET_X + pieceX * BLOCK_SIZE, 
+                gridDrawOffset + pieceY * BLOCK_SIZE
+            );
+            
+            // You'll need to update other drawing methods similarly
             drawQueue(g);
             drawHeldPiece(g);
             drawGhostPiece(g);
@@ -170,30 +193,30 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
 
     private void drawQueue(Graphics g) {
-        int startX = GAME_WIDTH + GRID_OFFSET_X + 20; // Right side panel
-        int startY = 50;              // Start Y position for the first piece in the queue
+        Tetromino[]piecesArray;
+        int startX = GAME_WIDTH + GRID_OFFSET_X + 30; // Right side panel
+        int startY = 150;              // Start Y position for the first piece in the queue
         int spacing = 100;            // Vertical spacing between queued pieces
     
         // Draw the "Next Pieces" label
         g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 20));
+        g.setFont(new Font("SansSerif", Font.BOLD, 25));
         g.drawString("Next Pieces", startX, startY - 20);
     
-        // Draw the next pieces in the queue
-        int i = 0;
-        for (Tetromino piece : pieceQueue) {
-            piece.draw(g, startX, startY + (i * spacing)); // Draw each queued piece
-            i++;
+        //Draw the next pieces in the
+        piecesArray = pieceQueue.toArray(new Tetromino[0]);
+        for (int i = 0; i < piecesArray.length; i++) {
+            piecesArray[i].draw(g, startX, startY + (i * spacing)); // Draw each queued piece
         }
     }
 
     private void drawHeldPiece(Graphics g) {
-        int startX = 20; // Left side panel
-        int startY = 50;
+        int startX = 40; // Left side panel
+        int startY = 150;
 
         // Draw "Held Piece" label
         g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 20));
+        g.setFont(new Font("SansSerif", Font.BOLD, 25));
         g.drawString("Held Piece", startX, startY - 20);
 
         // Draw the held piece (if any)
@@ -204,21 +227,24 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     private void holdPiece() {
         if (!canHold) return; // Can only hold once per piece
-
+    
         if (heldPiece == null) {
             // First time holding a piece
+            currentPiece.resetRotation(); // Reset rotation before holding
             heldPiece = currentPiece;
             spawnNewPiece();
         } else {
             // Swap current piece with held piece
             Tetromino temp = currentPiece;
             currentPiece = heldPiece;
+            currentPiece.resetRotation(); // Reset rotation for the swapped-in piece
             heldPiece = temp;
+            heldPiece.resetRotation(); // Reset rotation for the piece being held
             
             // Reset piece position
             pieceX = GRID_COLS / 2 - 2;
             pieceY = 0;
-
+    
             // Check if the swapped piece causes a collision
             if (checkCollision(pieceX, pieceY)) {
                 // If collision occurs, revert the swap and spawn a new piece
@@ -228,13 +254,16 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 return;
             }
         }
-
+    
         // Prevent multiple holds
         canHold = false;
         repaint();
     }
+    
 
     private void drawGhostPiece(Graphics g) {
+        int gridDrawOffset = TOP_PANEL_HEIGHT;
+        
         int ghostY = pieceY;
         
         // Find the lowest valid position for the ghost piece
@@ -248,7 +277,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         
         currentPiece.draw(g2d, 
             GRID_OFFSET_X + pieceX * Tetromino.BLOCK_SIZE, 
-            ghostY * Tetromino.BLOCK_SIZE
+            gridDrawOffset + ghostY * Tetromino.BLOCK_SIZE
         );
         
         g2d.dispose();
@@ -316,7 +345,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     
     private void updateGame() {
-        if (!checkCollision(pieceX, pieceY + 1)) {
+        if (!checkCollision(pieceX, pieceY + 1) && currentState != GameState.MAIN_MENU) {
             pieceY++;
             currentLockDelayFrames = 0;
             isLockDelayActive = false;
@@ -339,11 +368,12 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
 
 
-        if(grid.getLinesCleared() >= 10 && currentState == GameState.GAME_SPRINT){
+        if(grid.getLinesCleared() >= 40 && currentState == GameState.GAME_SPRINT){
             currentState = GameState.SCORE_SCREEN;
             gameTimer.stop();
             System.out.println(gameTimer.getFormattedTime());
         }
+
     }
 
     private boolean checkCollision(int x, int y) {
@@ -363,7 +393,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         canHold = true;
     
         // Check for collision right after spawning
-        if (checkCollision(pieceX, pieceY)) {
+        if (checkCollision(pieceX, pieceY) && currentState != GameState.MAIN_MENU) {
             JOptionPane.showMessageDialog(this, "Game Over!");
             gameTimer.stop(); // Stop the timer
             System.exit(0);
@@ -390,92 +420,185 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
+    private void findGridsOccupied(){
+        for (int row = 0; row < 20; row++) {
+            for (int col = 0; col < 10; col++) {
+                if (grid.isOccupied(row, col)) {
+                    System.out.println("Occupied cell at [" + row + ", " + col + "]");
+                }
+            }
+        }
+    }
+
+
+
+    public boolean tryWallKick(int deltaX, int deltaY) {
+        // Store original position
+        int originalX = pieceX;
+        int originalY = pieceY;
+        
+        // Try the kick
+        pieceX += deltaX;
+        pieceY -= deltaY;  // Invert deltaY because Tetris grid Y increases downward
+        
+        // Check if the new position is valid using collision detection
+        if (checkCollision(pieceX, pieceY)) {
+            // Revert to original position if invalid
+            pieceX = originalX;
+            pieceY = originalY;
+            return false;
+        }
+        
+        // Reset lock delay and movement counter on successful wall kick
+        if (isLockDelayActive) {
+            currentLockDelayFrames = 0;
+            movementCounter = 0;  // Reset movement counter to allow for more movements
+        }
+        
+        return true;
+    }
+
+    private boolean performWallKick() {
+    
+        int currentState = currentPiece.getRotationState();
+        int previousState = currentPiece.getPreviousRotation();
+        
+        // Determine which wall kick data to use for both CW and CCW rotations
+        int kickIndex;
+        
+        // For clockwise rotations
+        if (currentState == 1 && previousState == 0) kickIndex = 0;        // 0 -> R
+        else if (currentState == 2 && previousState == 1) kickIndex = 2;   // R -> 2
+        else if (currentState == 3 && previousState == 2) kickIndex = 4;   // 2 -> L
+        else if (currentState == 0 && previousState == 3) kickIndex = 6;   // L -> 0
+        // For counter-clockwise rotations
+        else if (currentState == 3 && previousState == 0) kickIndex = 7;   // 0 -> L
+        else if (currentState == 2 && previousState == 3) kickIndex = 5;   // L -> 2
+        else if (currentState == 1 && previousState == 2) kickIndex = 3;   // 2 -> R
+        else if (currentState == 0 && previousState == 1) kickIndex = 1;   // R -> 0
+        else return false;
+    
+        // Try each wall kick test
+        for (int i = 0; i < Tetromino.JLSTZ_WALLKICKS[kickIndex].length; i++) {
+            int deltaX = Tetromino.JLSTZ_WALLKICKS[kickIndex][i][0];
+            int deltaY = Tetromino.JLSTZ_WALLKICKS[kickIndex][i][1];
+            if (tryWallKick(deltaX, deltaY)) {
+                return true;
+            }
+        }
+
+        //I piece has different kick tests
+        if (currentPiece.getShapeWidth() == 4) {
+            for (int i = 0; i < Tetromino.I_WALLKICKS[kickIndex].length; i++) {
+                int deltaX = Tetromino.I_WALLKICKS[kickIndex][i][0];
+                int deltaY = Tetromino.I_WALLKICKS[kickIndex][i][1];
+                if (tryWallKick(deltaX, deltaY)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+
     public void keyPressed(KeyEvent e) {
         boolean pieceWasMoved = false;
+        if (currentState != GameState.MAIN_MENU){
+            switch (e.getKeyCode()) {
+                case KeyEvent.VK_LEFT:
+                    leftKeyPressed = true;
+                    lastKeyPressed = -1; // Left arrow is now the last key pressed
+                    dasCharge = 0;
+                    movePieceHorizontally(-1);
+                    break;
+        
+                case KeyEvent.VK_RIGHT:
+                    rightKeyPressed = true;
+                    lastKeyPressed = 1; // Right arrow is now the last key pressed
+                    dasCharge = 0;
+                    movePieceHorizontally(1);
+                    break;
+        
+                case KeyEvent.VK_SHIFT:
+                    softDropActive = true;
+                    break;
+        
+                case KeyEvent.VK_UP:
+                    currentPiece.rotateCW();
+                    if (!performWallKick()) {
+                        currentPiece.rotateCCW();
+                    }
+                    break;
+        
+                case KeyEvent.VK_DOWN:
+                    currentPiece.rotateCCW();
+                    if (!performWallKick()) {
+                        currentPiece.rotateCW();
+                    }
+                    break;
+        
+                case KeyEvent.VK_X:
+                    currentPiece.rotateFlip();
+                    if (checkCollision(pieceX, pieceY)) {
+                        if(tryWallKick(-1, 0)) return;
+                        if(tryWallKick(1, 0)) return;
+                        currentPiece.rotateFlip(); // Undo if invalid
+                    } else {
+                        pieceWasMoved = true;
+                    }
+                    break;
+        
+                case KeyEvent.VK_SPACE:
+                    hardDrop();
+                    break;
+        
+                case KeyEvent.VK_C:
+                    holdPiece();
+                    break;
     
-        switch (e.getKeyCode()) {
-            case KeyEvent.VK_LEFT:
-                leftKeyPressed = true;
-                lastKeyPressed = -1; // Left arrow is now the last key pressed
-                dasCharge = 0;
-                movePieceHorizontally(-1);
-                break;
+                case KeyEvent.VK_R:
+                    restartGame();
+                    break;
     
-            case KeyEvent.VK_RIGHT:
-                rightKeyPressed = true;
-                lastKeyPressed = 1; // Right arrow is now the last key pressed
-                dasCharge = 0;
-                movePieceHorizontally(1);
-                break;
-    
-            case KeyEvent.VK_SHIFT:
-                softDropActive = true;
-                break;
-    
-            case KeyEvent.VK_UP:
-                currentPiece.rotateCW();
-                if (checkCollision(pieceX, pieceY)) {
-                    currentPiece.rotateCCW(); // Undo if invalid
-                } else {
-                    pieceWasMoved = true;
-                }
-                break;
-    
-            case KeyEvent.VK_DOWN:
-                currentPiece.rotateCCW();
-                if (checkCollision(pieceX, pieceY)) {
-                    currentPiece.rotateCW(); // Undo if invalid
-                } else {
-                    pieceWasMoved = true;
-                }
-                break;
-    
-            case KeyEvent.VK_X:
-                currentPiece.rotateFlip();
-                if (checkCollision(pieceX, pieceY)) {
-                    currentPiece.rotateCW(); // Undo if invalid
-                } else {
-                    pieceWasMoved = true;
-                }
-                break;
-    
-            case KeyEvent.VK_SPACE:
-                hardDrop();
-                break;
-    
-            case KeyEvent.VK_C:
-                holdPiece();
-                break;
+                case KeyEvent.VK_ESCAPE:
+                    // Show confirmation popup
+                    int response = JOptionPane.showConfirmDialog(
+                        null,
+                        "Do you want to return to the main menu?",
+                        "Confirm Exit",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE
+                    );
+                    
+                    // Check the user's choice
+                    if (response == JOptionPane.YES_OPTION) {
+                        returnToMainMenu(); // Call method to return to main menu
+                        menu.resetToMainMenu(null);
+                    }
+                    break;
 
-            case KeyEvent.VK_R:
-                restartGame();
-                break;
+                case KeyEvent.VK_T: // 'T' key for testing
+                    System.out.println("Total rows: " + 20);
+                    System.out.println("Total columns: " + 10);
+                    
+                    findGridsOccupied();
+                    int rotationState = currentPiece.getRotationState();
+                    System.out.println("Current rotation state: " + rotationState);
+                    
+                    break;
 
-            case KeyEvent.VK_ESCAPE:
-                // Show confirmation popup
-                int response = JOptionPane.showConfirmDialog(
-                    null,
-                    "Do you want to return to the main menu?",
-                    "Confirm Exit",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE
-                );
-                
-                // Check the user's choice
-                if (response == JOptionPane.YES_OPTION) {
-                    returnToMainMenu(); // Call method to return to main menu
-                    menu.resetToMainMenu(null);
-                }
-                break;
+            }
+        
+            // Reset lock delay and increment movement counter if piece was moved or rotated
+            if (pieceWasMoved && isLockDelayActive) {
+                currentLockDelayFrames = 0;
+                movementCounter++;
+            }
+        
+            repaint();
         }
-    
-        // Reset lock delay and increment movement counter if piece was moved or rotated
-        if (pieceWasMoved && isLockDelayActive) {
-            currentLockDelayFrames = 0;
-            movementCounter++;
-        }
-    
-        repaint();
+        
     }
     
 

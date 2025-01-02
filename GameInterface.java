@@ -19,6 +19,7 @@ public class GameInterface {
     private float fadeAlpha = 0.0f;
     private String actionText = "";
     private String tSpinText = "";
+    private String pcText = "";
     private static final int FADE_INTERVAL = 75;
 
     public GameInterface(int gridOffsetX, int topPanelHeight) {
@@ -48,7 +49,7 @@ public class GameInterface {
         this.isCountingDown = isCountingDown;
     }
 
-    public void drawStats(Graphics g, String timeElapsed, int piecesPlaced, int linesCleared) {
+    public void drawStats(Graphics g, String timeElapsedFormatted, String timeRemaining, long timeElapsedMiliseconds, int piecesPlaced, int linesCleared) {
         String timeString;
         String mainTime;
         String milliseconds;
@@ -59,10 +60,26 @@ public class GameInterface {
         int posY = 625; // Align with held pieces
 
         if(!isCountingDown){
-            timeString = timeElapsed; // Get current time
+            if(gameState.equals("GAME_SPRINT")){
+                timeString = timeElapsedFormatted; // Get current time
+            }
+            else if(gameState.equals("GAME_TIMETRIAL")){
+                timeString = timeRemaining; // Get time remaining
+            }
+            else{
+                timeString = timeElapsedFormatted; // Get current time
+            }
         }
         else{
+            if(gameState.equals("GAME_SPRINT")){
+                timeString = "00:00.000"; // Display 0 if game did not start
+            }
+            else if(gameState.equals("GAME_TIMETRIAL")){
+                timeString = "02:00.000"; // Display 2 minutes if game did not start (time remaining)
+            }
+            else{
             timeString = "00:00.000"; // Display 0 if game did not start
+            }
         }
 
         // Get lines remaining
@@ -74,7 +91,7 @@ public class GameInterface {
         }
 
         // Calculate pieces placed per second
-        timeInSeconds = convertTimeStringToSeconds(timeString);
+        timeInSeconds = timeElapsedMiliseconds / 1000.0;
         if(!isCountingDown){
             piecePerSecond = piecesPlaced / timeInSeconds;
         }
@@ -179,7 +196,7 @@ public class GameInterface {
         g2d.dispose();
     }
 
-    public void triggerActionText(int linesCleared, boolean isTSpin) {
+    public void triggerActionText(int linesCleared, boolean isTSpin, boolean isGridEmpty) {
         // Determine new action text 
 
         switch (linesCleared){
@@ -206,6 +223,13 @@ public class GameInterface {
         else{
             tSpinText = "";
         }
+
+        if(isGridEmpty){
+            pcText = "ALL CLEAR!";
+        }
+        else {
+            pcText = "";
+        }
     
         if (!actionText.isEmpty()) {
             fadeAlpha = 1.0f; // Reset fade effect
@@ -224,20 +248,13 @@ public class GameInterface {
             g2d.setFont(new Font("SansSerif", Font.BOLD, 35));
             g2d.setColor(Color.WHITE);
             g2d.drawString(actionText, posX, posY - 350);
-            g2d.setColor(Color.MAGENTA);
             g2d.setFont(new Font("SansSerif", Font.BOLD, 25));
+            g2d.setColor(Color.MAGENTA);
             g2d.drawString(tSpinText, posX, posY - 390);
+            g2d.setFont(new Font("SansSerif", Font.BOLD, 45));
+            g2d.setColor(new Color(255, 234,0));
+            g2d.drawString(pcText, posX + 220, posY - 360);
             g2d.dispose();
         }
     }
-
-    private double convertTimeStringToSeconds(String timeString) {
-        String[] parts = timeString.split("[:.]");
-        int minutes = Integer.parseInt(parts[0]);
-        int seconds = Integer.parseInt(parts[1]);
-        int milliseconds = Integer.parseInt(parts[2]);
-
-        return minutes * 60 + seconds + milliseconds / 1000.0;
-    }
-
 }

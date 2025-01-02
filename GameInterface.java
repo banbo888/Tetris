@@ -1,5 +1,6 @@
 import java.awt.*;
 import java.util.Queue;
+import javax.swing.Timer;
 
 public class GameInterface {
     private static final int BLOCK_SIZE = Tetromino.BLOCK_SIZE;
@@ -12,10 +13,29 @@ public class GameInterface {
     private int pieceY;
     private String gameState;
     private boolean isCountingDown;
+    
+    // Add new fields for fade effect
+    private Timer fadeTimer;
+    private float fadeAlpha = 0.0f;
+    private String actionText = "";
+    private String tSpinText = "";
+    private static final int FADE_INTERVAL = 75;
 
     public GameInterface(int gridOffsetX, int topPanelHeight) {
         this.GRID_OFFSET_X = gridOffsetX;
         this.TOP_PANEL_HEIGHT = topPanelHeight;
+
+        //Initialize the fade timer
+        fadeTimer = new Timer(FADE_INTERVAL, e -> {
+            fadeAlpha -= 0.02f;
+            if (fadeAlpha <= 0) {
+                fadeAlpha = 0;
+                actionText = "";
+                ((Timer) e.getSource()).stop(); // Stop the timer when fadeAlpha is 0
+            }
+        });
+        fadeTimer.setRepeats(true);
+        
     }
 
     public void updateState(Queue<Tetromino> pieceQueue, Tetromino heldPiece, Tetromino currentPiece, int pieceX, int pieceY, String gameState, boolean isCountingDown) {
@@ -69,40 +89,40 @@ public class GameInterface {
     
         // Draw "TIME:" label
         g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 25)); // Smaller font for the label
-        g.drawString("TIME:", posX, posY - 50);
+        g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Smaller font for the label
+        g.drawString("TIME:", posX, posY - 40);
     
         // Draw the main time part
-        g.setFont(new Font("SansSerif", Font.BOLD, 40)); // Larger font for main time
+        g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Larger font for main time
         FontMetrics fmMain = g.getFontMetrics();
         int mainTimeWidth = fmMain.stringWidth(mainTime); // Get width of main time string
         g.drawString(mainTime, posX, posY);
     
         // Draw the milliseconds part
-        g.setFont(new Font("SansSerif", Font.PLAIN, 30)); // Smaller font for milliseconds
+        g.setFont(new Font("SansSerif", Font.PLAIN, 25)); // Smaller font for milliseconds
         g.drawString(milliseconds, posX + mainTimeWidth, posY); // Offset by the width of main time
 
         // Draw "LINES LEFT:" label
-        g.setFont(new Font("SansSerif", Font.BOLD, 25)); // Smaller font for the label
-        g.drawString("LINES LEFT:", posX, posY - 150);
+        g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Smaller font for the label
+        g.drawString("LINES LEFT:", posX, posY - 140);
 
         // Draw lines remaining counter
-        g.setFont(new Font("SansSerif", Font.BOLD, 40)); // Larger font for main time
-        g.drawString(String.valueOf(linesRemaining), posX, posY - 100);
+        g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Larger font for main time
+        g.drawString(String.valueOf(linesRemaining), posX, posY - 95);
 
         //Draw "PIECES PLACED:" label
-        g.setFont(new Font("SansSerif", Font.BOLD, 25)); // Smaller font for the label
-        g.drawString("PIECES:", posX, posY - 250);
+        g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Smaller font for the label
+        g.drawString("PIECES:", posX, posY - 245);
 
         //Draw pieces placed counter
-        g.setFont(new Font("SansSerif", Font.BOLD, 40)); // Larger font for main time
+        g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Larger font for main time
         FontMetrics fmPiecesPlaced = g.getFontMetrics();
         int piecesCounterWidth = fmPiecesPlaced.stringWidth(String.valueOf(piecesPlaced)); // Get width of main time string
-        g.drawString(String.valueOf(piecesPlaced), posX, posY - 200);
+        g.drawString(String.valueOf(piecesPlaced), posX, posY - 195);
 
         // Draw pieces placed per second
-        g.setFont(new Font("SansSerif", Font.PLAIN, 30)); // Smaller font for PPS
-        g.drawString(String.format("%.2f", piecePerSecond) + "/S", posX + piecesCounterWidth + 20, posY - 200);
+        g.setFont(new Font("SansSerif", Font.PLAIN, 25)); // Smaller font for PPS
+        g.drawString(String.format("%.2f", piecePerSecond) + "/S", posX + piecesCounterWidth + 20, posY - 195);
         
     }
 
@@ -157,6 +177,58 @@ public class GameInterface {
         );
         
         g2d.dispose();
+    }
+
+    public void triggerActionText(int linesCleared, boolean isTSpin) {
+        // Determine new action text 
+
+        switch (linesCleared){
+            case 1:
+                actionText = "SINGLE";
+                break;
+            case 2:
+                actionText = "DOUBLE";
+                break;
+            case 3:
+                actionText = "TRIPLE";
+                break;
+            case 4:
+                actionText = "QUAD";
+                break;
+            default:
+                actionText = "";
+                break;
+        }
+
+        if (isTSpin){
+            tSpinText = "T-SPIN";
+        }
+        else{
+            tSpinText = "";
+        }
+    
+        if (!actionText.isEmpty()) {
+            fadeAlpha = 1.0f; // Reset fade effect
+            fadeTimer.start(); // Start fade timer
+        }
+    }
+
+    public void drawActionText(Graphics g) {
+        int posX = 100;
+        int posY = 625;
+    
+        // Only draw if fadeAlpha is greater than 0
+        if (fadeAlpha > 0 && actionText != null && !actionText.isEmpty()) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, fadeAlpha));
+            g2d.setFont(new Font("SansSerif", Font.BOLD, 35));
+            g2d.setColor(Color.WHITE);
+            g2d.drawString(actionText, posX, posY - 350);
+            g2d.setColor(Color.MAGENTA);
+            g2d.setFont(new Font("SansSerif", Font.BOLD, 25));
+            g2d.drawString(tSpinText, posX, posY - 390);
+            g2d.dispose();
+        }
     }
 
     private double convertTimeStringToSeconds(String timeString) {

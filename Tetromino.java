@@ -1,4 +1,3 @@
-
 import java.awt.*;
 
 public class Tetromino {
@@ -7,6 +6,7 @@ public class Tetromino {
     private int [][][] rotations;
     private int rotation = 0; // Current rotation state
     private int previousRotation = 0; //Previous rotation state
+    private int index; // Add an index field to store the type of piece
     
 
     public static final int[][][][] TETROMINOS = {
@@ -94,6 +94,7 @@ public class Tetromino {
 
 
     public Tetromino(int index, Color color) {
+        this.index = index; // Initialize the index field
         this.rotations = TETROMINOS[index];
         this.color = color;
     }
@@ -138,6 +139,11 @@ public class Tetromino {
 
     public int getPreviousRotation(){
         return previousRotation;
+    }
+
+    // Add a method to get the index of the piece
+    public int getIndex() {
+        return index;
     }
 
     // Draw the tetromino

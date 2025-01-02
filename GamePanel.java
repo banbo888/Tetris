@@ -215,8 +215,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             // Adjust grid drawing offset
             int gridDrawOffset = TOP_PANEL_HEIGHT;
             
-            // Draw game grid
-            g.setColor(Color.LIGHT_GRAY);
+            // Draw game grid with less visible lines
+            g.setColor(new Color(211, 211, 211, 200)); // White with 80% opacity
             for (int x = GRID_OFFSET_X; x <= GRID_OFFSET_X + GAME_WIDTH; x += BLOCK_SIZE) {
                 g.drawLine(x, gridDrawOffset, x, GAME_HEIGHT - BOTTOM_PANEL_HEIGHT);
             }

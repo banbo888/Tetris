@@ -16,10 +16,10 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private static final int GRID_OFFSET_X = SIDE_PANEL_WIDTH; // Offset for grid drawing and calculations
     
     //Softdrop 
-    private int lockDelayFrames = 60;  // ~0.5 seconds at 60 FPS
+    private int lockDelayFrames = 10;  // ~0.5 seconds at 60 FPS
     private int currentLockDelayFrames = 0;
     private int movementCounter = 0;
-    private static final int MAX_MOVEMENTS = 30;
+    private static final int MAX_MOVEMENTS = 20;
     private boolean isLockDelayActive = false;
     //DAS AND ARR
     private static final int DAS_DELAY = 4; // Delay before auto-shift starts (in frames)
@@ -34,7 +34,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     Tetromino heldPiece;
     Grid grid;
     PieceBagGenerator bagGenerator;
-    GameState currentState = GameState.MAIN_MENU; // Current state of the game
+    GameState currentState = GameState.MENU; // Current state of the game
     Menu menu;
     Timer gameTimer;
     GameInterface gameInterface;
@@ -50,13 +50,19 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private long countdownStartTime;
     private static final String[] COUNTDOWN_TEXT = {"GO!", "SET", "READY"};
 
+    // Line clear logic
+    private int currentLinesCleared = 0; // Check how many lines were cleared in a move
+    private int backToBackCounter = 0; // Check for back-to-back (quads and Tspins)
+    private boolean lastKeyRotation = false; // Check if the last key pressed was a rotation
+
 
     // Enum for game states
     public enum GameState {
-        MAIN_MENU, // Main menu state
+        MENU, // Main menu state
         GAME,      // Active game state
         SCORE_SCREEN, // Win screen state
         LOSE_SCREEN,//Lose screen
+        PAUSE       // If user wants to pause the game
 
     }
     
@@ -193,7 +199,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     public void paint(Graphics g) {
         super.paint(g);
-        if (currentState == GameState.MAIN_MENU) {
+        if (currentState == GameState.MENU) {
             menu.setVisible(true);
         } else {
             menu.setVisible(false);
@@ -225,13 +231,13 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 gridDrawOffset + pieceY * BLOCK_SIZE
             );
             
-            // You'll need to update other drawing methods similarly
+            // Game Interface
             gameInterface.updateState(pieceQueue, heldPiece, currentPiece, pieceX, pieceY, currentState.toString(), isCountingdown);
             gameInterface.drawQueue(g);
             gameInterface.drawHeldPiece(g);
             gameInterface.drawGhostPiece(g, grid);
             gameInterface.drawStats(g, gameTimer.getFormattedTime(), grid.getPiecesPlaced(), grid.getLinesCleared());
-
+            gameInterface.drawActionText(g);
             if (isCountingdown) {
                 drawCountdown(g);
             }
@@ -322,7 +328,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
 
             if (softDropActive) {
-                adjustedDropInterval = dropInterval / 50; // If soft drop is active, drop faster
+                adjustedDropInterval = dropInterval / 10; // If soft drop is active, drop faster
             } else {
                 adjustedDropInterval = dropInterval; // If soft drop is not active, use normal interval
             }
@@ -338,7 +344,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     
     private void updateGame() {
         // Check for game over condition first
-        if (isGameOver() && currentState != GameState.MAIN_MENU) {
+        if (isGameOver() && currentState != GameState.MENU) {
             currentState = GameState.LOSE_SCREEN;
             gameTimer.stop();
             Object[] options = {"Return to Main Menu", "Try Again"};
@@ -352,7 +358,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 options[0]);
             
             if (choice == JOptionPane.YES_OPTION) {
-                currentState = GameState.MAIN_MENU;
+                currentState = GameState.MENU;
                 menu.resetToMainMenu(null);
                 return;
             } else if (choice == JOptionPane.NO_OPTION) {
@@ -361,7 +367,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             }            
         }
     
-        if (!checkCollision(pieceX, pieceY + 1) && currentState != GameState.MAIN_MENU) {
+        if (!checkCollision(pieceX, pieceY + 1) && currentState != GameState.MENU) {
             pieceY++;
             currentLockDelayFrames = 0;
             isLockDelayActive = false;
@@ -377,8 +383,9 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     
             // Lock the piece after lock delay or max movements
             if (currentLockDelayFrames >= lockDelayFrames || movementCounter >= MAX_MOVEMENTS) {
+
                 grid.addPiece(currentPiece, pieceX, pieceY);
-                grid.clearFullLines();
+                updateLinesCleared(isTSpin()); 
                 spawnNewPiece();
             }
         }
@@ -386,8 +393,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         if(grid.getLinesCleared() >= 40 && currentState == GameState.GAME){
             currentState = GameState.SCORE_SCREEN;
             gameTimer.stop();
-            System.out.println(gameTimer.getFormattedTime());
         }
+
     }
 
     private boolean checkCollision(int x, int y) {
@@ -421,13 +428,24 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     }
 
     private void hardDrop() {
+
         while (!checkCollision(pieceX, pieceY + 1)) {
             pieceY++;
         }
-        // Immediately lock the piece without delay
         grid.addPiece(currentPiece, pieceX, pieceY);
-        grid.clearFullLines();
+        updateLinesCleared(isTSpin()); // Centralized update for lines cleared
         spawnNewPiece();
+    }
+
+    private void updateLinesCleared(boolean isTspin) {
+        int previousLinesCleared = grid.getLinesCleared();
+        grid.clearFullLines(); // Clear lines in the grid
+        currentLinesCleared = grid.getLinesCleared() - previousLinesCleared;
+
+        // Trigger action text
+        if(currentLinesCleared > 0){ // Only trigger if lines were cleared
+            gameInterface.triggerActionText(currentLinesCleared, isTspin);
+        }
     }
 
     private void movePieceHorizontally(int direction) {
@@ -449,8 +467,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             }
         }
     }
-
-
 
     public boolean tryWallKick(int deltaX, int deltaY) {
         // Store original position
@@ -519,44 +535,81 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
         
         return false;
+    }    
+
+    public boolean isTSpin(){
+        if(currentPiece.getIndex() != 1 || !lastKeyRotation){
+            return false;
+        }
+
+        int[][] corners = {
+            {pieceY, pieceX},           // Top-left
+            {pieceY, pieceX + 2},       // Top-right
+            {pieceY + 2, pieceX},       // Bottom-left
+            {pieceY + 2, pieceX + 2}    // Bottom-right
+        };
+
+        // Count occupied corners
+        int occupiedCorners = 0;
+        for (int i = 0; i < corners.length; i++) {
+            int row = corners[i][0];
+            int col = corners[i][1];
+
+            // Check if corner is outside grid bounds
+            boolean isOutOfBounds = row >= Grid.ROWS || col >= Grid.COLS || col < 0;
+
+            // Check if corner is occupied by a block
+            boolean isOccupied = false;
+            if (row >= 0) {  // Only check grid occupation if row is valid
+                isOccupied = grid.isOccupied(row, col);
+            }
+
+            // If either condition is true, count it as an occupied corner
+            if (isOutOfBounds || isOccupied) {
+                occupiedCorners++;
+            }
+        }
+
+        return occupiedCorners >= 3;
     }
-    
 
     public void keyPressed(KeyEvent e) {
         boolean pieceWasMoved = false;
 
-        switch(e.getKeyCode()) {
-            case KeyEvent.VK_R:
-                restartGame();
-                break;
-            
-            case KeyEvent.VK_ESCAPE:
-                // Show confirmation popup
-                int response = JOptionPane.showConfirmDialog(
-                    null,
-                    "Do you want to return to the main menu?",
-                    "Confirm Exit",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE
-                );
+        if(currentState != GameState.MENU){
+            switch(e.getKeyCode()) {
+                case KeyEvent.VK_R:
+                    restartGame();
+                    break;
                 
-                // Check the user's choice
-                if (response == JOptionPane.YES_OPTION) {
-                    currentState = GameState.MAIN_MENU;
-                    menu.resetToMainMenu(null);
-                }
-                break;
+                case KeyEvent.VK_ESCAPE:
+                    // Show confirmation popup
+                    int response = JOptionPane.showConfirmDialog(
+                        null,
+                        "Do you want to return to the main menu?",
+                        "Confirm Exit",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE
+                    );
+                    
+                    // Check the user's choice
+                    if (response == JOptionPane.YES_OPTION) {
+                        currentState = GameState.MENU;
+                        menu.resetToMainMenu(null);
+                    }
+                    break;
+            }
         }
 
-
-
-        if (!isCountingdown && currentState != GameState.MAIN_MENU) {
+        if (!isCountingdown && currentState != GameState.MENU) {
             switch (e.getKeyCode()) {
                 case KeyEvent.VK_LEFT:
                     leftKeyPressed = true;
                     lastKeyPressed = -1; // Left arrow is now the last key pressed
                     dasCharge = 0;
                     movePieceHorizontally(-1);
+                    pieceWasMoved = true;
+                    lastKeyRotation = false;
                     break;
         
                 case KeyEvent.VK_RIGHT:
@@ -564,6 +617,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                     lastKeyPressed = 1; // Right arrow is now the last key pressed
                     dasCharge = 0;
                     movePieceHorizontally(1);
+                    pieceWasMoved = true;
+                    lastKeyRotation = false;
                     break;
         
                 case KeyEvent.VK_SHIFT:
@@ -572,26 +627,32 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         
                 case KeyEvent.VK_UP:
                     currentPiece.rotateCW();
+                    pieceWasMoved = true;
+                    lastKeyRotation = true;
                     if (!performWallKick()) {
                         currentPiece.rotateCCW();
+                        lastKeyRotation = false;
                     }
                     break;
         
                 case KeyEvent.VK_DOWN:
                     currentPiece.rotateCCW();
+                    pieceWasMoved = true;
+                    lastKeyRotation = true;
                     if (!performWallKick()) {
                         currentPiece.rotateCW();
+                        lastKeyRotation = false;
                     }
                     break;
         
                 case KeyEvent.VK_X:
                     currentPiece.rotateFlip();
+                    lastKeyRotation = false;
+                    pieceWasMoved = true;
                     if (checkCollision(pieceX, pieceY)) {
                         if(tryWallKick(-1, 0)) return;
                         if(tryWallKick(1, 0)) return;
                         currentPiece.rotateFlip(); // Undo if invalid
-                    } else {
-                        pieceWasMoved = true;
                     }
                     break;
         
@@ -601,6 +662,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         
                 case KeyEvent.VK_C:
                     holdPiece();
+                    lastKeyRotation = false;
                     break;
 
                 case KeyEvent.VK_T: // 'T' key for testing
@@ -611,7 +673,48 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                     int rotationState = currentPiece.getRotationState();
                     System.out.println("Current rotation state: " + rotationState);
                     
-                    break;
+                    // Example usage of getIndex to check the type of the current piece
+                    int currentPieceIndex = currentPiece.getIndex();
+                    switch (currentPieceIndex) {
+                        case 0:
+                            System.out.println("Current piece is I-piece");
+                            break;
+                        case 1:
+                            System.out.println("Current piece is T-piece");
+                            break;
+                        case 2:
+                            System.out.println("Current piece is O-piece");
+                            break;
+                        case 3:
+                            System.out.println("Current piece is Z-piece");
+                            break;
+                        case 4:
+                            System.out.println("Current piece is S-piece");
+                            break;
+                        case 5:
+                            System.out.println("Current piece is J-piece");
+                            break;
+                        case 6:
+                            System.out.println("Current piece is L-piece");
+                            break;
+                        default:
+                            System.out.println("Unknown piece");
+                            break;
+                    }
+
+                    int[][] corners = {
+                        {pieceY, pieceX},           // Top-left
+                        {pieceY, pieceX + 2},       // Top-right
+                        {pieceY + 2, pieceX},       // Bottom-left
+                        {pieceY + 2, pieceX + 2}    // Bottom-right
+                    };
+
+                    for (int i = 0; i < corners.length; i++) {
+                        int row = corners[i][0];
+                        int col = corners[i][1];
+                        System.out.println("Corner " + i + " at [" + row + ", " + col + "]");
+                    }
+
             }
         
             // Reset lock delay and increment movement counter if piece was moved or rotated

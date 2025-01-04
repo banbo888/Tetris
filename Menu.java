@@ -183,9 +183,9 @@ public class Menu extends JPanel {
         JTextField dasField = createNumberField(settings.getDas(), "Delayed Auto Shift: the delay before tetrominoes start moving when holding down movement keys (in frames)", 1, 20);
         JTextField sdfField = createNumberField(settings.getSdf(), "Soft Drop Factor: the speed at which tetrominoes fall when soft dropping", 5, 100);
         
-        handlingPanel.add(createSettingRow("ARR (0-5)  ", arrField));
-        handlingPanel.add(createSettingRow("DAS (1-20) ", dasField));
-        handlingPanel.add(createSettingRow("SDF (5-100)", sdfField));
+        handlingPanel.add(createSettingRow("ARR (1-5)   ", arrField));
+        handlingPanel.add(createSettingRow("DAS (1-20)  ", dasField));
+        handlingPanel.add(createSettingRow("SDF (5-1000)", sdfField));
         settingsPanel.add(handlingPanel);
     
         // Audio Settings (keeping sliders for these)
@@ -229,7 +229,7 @@ public class Menu extends JPanel {
             //Save settings when pressed:
             try {
                 int value = Integer.parseInt(arrField.getText());
-                value = Math.max(0, Math.min(5, value));
+                value = Math.max(1, Math.min(5, value));
                 settings.setArr(value);
                 arrField.setText(String.valueOf(value));
             } catch (NumberFormatException ex) {
@@ -247,7 +247,7 @@ public class Menu extends JPanel {
 
             try {
                 int value = Integer.parseInt(sdfField.getText());
-                value = Math.max(5, Math.min(100, value));
+                value = Math.max(5, Math.min(1000, value));
                 settings.setSdf(value);
                 sdfField.setText(String.valueOf(value));
             } catch (NumberFormatException ex) {
@@ -293,8 +293,8 @@ public class Menu extends JPanel {
         slider.setPaintTicks(true);
         slider.setPaintTrack(true);
         slider.setPaintLabels(true);
-        slider.setMajorTickSpacing((max - min) / 4);
-        slider.setMinorTickSpacing((max - min) / 20); // Add minor ticks for better visibility
+        slider.setMajorTickSpacing(25);
+        slider.setMinorTickSpacing(2); // Add minor ticks for better visibility
         slider.setFont(new Font("Monospaced", Font.PLAIN, 10)); // Reduced font size for labels
         slider.setPreferredSize(new Dimension(200, 40)); // Reduced size for better visibility
         return slider;

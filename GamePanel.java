@@ -196,6 +196,9 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         
         // Reset hold ability
         canHold = true;
+
+        //Reset keys pressed
+        lastKeyPressed = 0;
         
         // Get first piece from queue
         currentPiece = pieceQueue.poll();
@@ -467,13 +470,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         // Check if the new piece collides at spawn position
         if (checkCollision(pieceX, pieceY)) {
             return true;
-        }
-        
-        // Additionally check if any blocks are in the top row (optional but recommended)
-        for (int x = 0; x < GRID_COLS; x++) {
-            if (grid.isOccupied(0, x)) {
-                return true;
-            }
         }
         
         return false;

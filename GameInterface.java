@@ -13,13 +13,17 @@ public class GameInterface {
     private int pieceY;
     private String gameState;
     private boolean isCountingDown;
-    
-    // Add new fields for fade effect
-    private Timer fadeTimer;
-    private float fadeAlpha = 0.0f;
+
+    //Action text
     private String actionText = "";
     private String tSpinText = "";
     private String pcText = "";
+    private String backToBackText = "";
+    private String comboString = "";
+
+    // Add fields for fade effect
+    private Timer fadeTimer;
+    private float fadeAlpha = 0.0f;
     private static final int FADE_INTERVAL = 75;
 
     public GameInterface(int gridOffsetX, int topPanelHeight) {
@@ -176,7 +180,7 @@ public class GameInterface {
         }
     }
 
-    public void drawGhostPiece(Graphics g, Grid grid) {
+    public void drawGhostPiece(Graphics g, Grid grid, int ghostVisibility) {
         int ghostY = pieceY;
         
         // Find the lowest valid position for the ghost piece
@@ -186,7 +190,7 @@ public class GameInterface {
         
         // Draw the ghost piece with reduced opacity
         Graphics2D g2d = (Graphics2D) g.create();
-        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, ghostVisibility/100.0f));
         
         currentPiece.draw(g2d, 
             GRID_OFFSET_X + pieceX * BLOCK_SIZE, 
@@ -196,7 +200,7 @@ public class GameInterface {
         g2d.dispose();
     }
 
-    public void triggerActionText(int linesCleared, boolean isTSpin, boolean isGridEmpty) {
+    public void triggerActionText(int linesCleared, boolean isTSpin, boolean isGridEmpty, int backToBackCounter, int comboCounter) {
         // Determine new action text 
 
         switch (linesCleared){
@@ -217,6 +221,7 @@ public class GameInterface {
                 break;
         }
 
+        //Tspin action text
         if (isTSpin){
             tSpinText = "T-SPIN";
         }
@@ -224,13 +229,33 @@ public class GameInterface {
             tSpinText = "";
         }
 
+        //All clear action text
         if(isGridEmpty){
             pcText = "ALL CLEAR!";
         }
         else {
             pcText = "";
         }
+
+        //Back to back action text
+        if(backToBackCounter == 2){
+            backToBackText = "B2B";
+        }
+        else if(backToBackCounter > 2){
+            backToBackText = "B2B x" + (backToBackCounter - 1);
+        }
+        else{
+            backToBackText = "";
+        }
     
+        //Combo action text
+        if(comboCounter >= 2){
+            comboString = String.valueOf(comboCounter - 1) + " COMBO";
+        }
+        else{
+            comboString = "";
+        }
+
         if (!actionText.isEmpty()) {
             fadeAlpha = 1.0f; // Reset fade effect
             fadeTimer.start(); // Start fade timer
@@ -239,7 +264,7 @@ public class GameInterface {
 
     public void drawActionText(Graphics g) {
         int posX = 100;
-        int posY = 625;
+        int posY = 615;
     
         // Only draw if fadeAlpha is greater than 0
         if (fadeAlpha > 0 && actionText != null && !actionText.isEmpty()) {
@@ -254,6 +279,14 @@ public class GameInterface {
             g2d.setFont(new Font("SansSerif", Font.BOLD, 45));
             g2d.setColor(new Color(255, 234,0));
             g2d.drawString(pcText, posX + 220, posY - 360);
+            g2d.setFont(new Font("SansSerif", Font.BOLD, 30));
+            g2d.setColor(Color.CYAN);
+            g2d.drawString(backToBackText, posX, posY - 310);
+            g2d.setFont(new Font("SansSerif", Font.BOLD, 30));
+            g2d.setColor(Color.YELLOW);
+            g2d.drawString(comboString, posX, posY - 270);
+
+            
             g2d.dispose();
         }
     }

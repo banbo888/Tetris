@@ -7,7 +7,7 @@ import javax.swing.*;
 public class GamePanel extends JPanel implements Runnable, KeyListener {
     public static final int GAME_WIDTH = 300;  // Width of main grid
     private static final int TOP_PANEL_HEIGHT = 50; // Adjust as needed
-    private static final int BOTTOM_PANEL_HEIGHT = 25; // Adjust as needed 
+    private static final int BOTTOM_PANEL_HEIGHT = 50; // Adjust as needed 
     public static final int GAME_HEIGHT = 600 + TOP_PANEL_HEIGHT + BOTTOM_PANEL_HEIGHT; // Original height plus new panels
     private static final int BLOCK_SIZE = Tetromino.BLOCK_SIZE;
     private static final int GRID_ROWS = GAME_HEIGHT / BLOCK_SIZE;
@@ -16,18 +16,28 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private static final int GRID_OFFSET_X = SIDE_PANEL_WIDTH; // Offset for grid drawing and calculations
     
     //Softdrop 
-    private int lockDelayFrames = 20;  // ~0.5 seconds at 60 FPS
-    private int currentLockDelayFrames = 0;
+    private int lockDelayTime;
+    private int currentLockDelayTime = 0;
     private int movementCounter = 0;
     private static final int MAX_MOVEMENTS = 20;
     private boolean isLockDelayActive = false;
-    //DAS AND ARR
-    private static final int DAS_DELAY = 4; // Delay before auto-shift starts (in frames)
-    private static final int ARR_DELAY = 1; // Auto-repeat rate (in frames)
+
+    //Handling settings (Delayed Auto Shift, Auto Repeat Rate, Soft Drop Factor)
+    private int dasDelay; // Delay before auto-shift starts (in frames, 1-20)
+    private int arrDelay; // Auto-repeat rate (in frames, 1-5)
+    private int softdropFactor; // Soft drop speed factor (1-100)
     private int dasCharge = 0;
     private boolean leftKeyPressed = false;
     private boolean rightKeyPressed = false;
     private int lastKeyPressed = 0; // 0: None, -1: Left, 1: Right
+
+    //Video and Audio settings
+    private boolean audioEnabled;
+    private int musicVolume;
+    private int sfxVolume;
+    private int gridVisibility;
+    private int ghostVisibility;
+    private boolean actionTextOn;
 
     Thread gameThread;
     Tetromino currentPiece;
@@ -38,6 +48,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     Menu menu;
     Timer gameTimer;
     GameInterface gameInterface;
+    Settings settings;
 
     private Queue<Tetromino> pieceQueue;
     private int pieceX = GRID_COLS / 2 - 2;
@@ -50,9 +61,10 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private long countdownStartTime;
     private static final String[] COUNTDOWN_TEXT = {"GO!", "SET", "READY"};
 
-    // Line clear logic
+    // Line clear logic (stores line clears, back to back, combo, and Tspin stats)
     private int currentLinesCleared = 0; // Check how many lines were cleared in a move
     private int backToBackCounter = 0; // Check for back-to-back (quads and Tspins)
+    private int comboCounter = 0;
     private boolean lastKeyValidRotation = false; // Check if the last key pressed was a rotation
 
 
@@ -72,11 +84,14 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     public GamePanel() {
         menu = new Menu(this);
         grid = new Grid();
+        settings = new Settings();
         gameTimer = new Timer();
         pieceQueue = new LinkedList<>();
         bagGenerator = new PieceBagGenerator();
         gameInterface = new GameInterface(GRID_OFFSET_X, TOP_PANEL_HEIGHT);
         initializePieceQueue();
+        updateSettings(settings);
+
 
         currentPiece = pieceQueue.poll();
         spawnNewPiece();
@@ -188,6 +203,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         
         //Restart stats
         grid.resetStats();
+        backToBackCounter = 0;
         gameTimer.reset();  // Reset the timer
         gameTimer.start();  // Restart the timer
 
@@ -211,6 +227,18 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         pieceQueue.add(bagGenerator.getNextPiece());
     }
 
+    public void updateSettings(Settings newSettings) {
+        this.settings = newSettings;
+        arrDelay = settings.getArr();
+        dasDelay = settings.getDas();
+        softdropFactor = settings.getSdf();
+        audioEnabled = settings.isAudioEnabled();
+        musicVolume = settings.getMusicVolume();
+        sfxVolume = settings.getSfxVolume();
+        gridVisibility = settings.getGridVisibility();
+        ghostVisibility = settings.getGhostVisibility();
+        actionTextOn = settings.isActionTextOn();
+    }
 
     public void paint(Graphics g) {
         super.paint(g);
@@ -231,7 +259,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             int gridDrawOffset = TOP_PANEL_HEIGHT;
             
             // Draw game grid with less visible lines
-            g.setColor(new Color(211, 211, 211, 200)); // White with 80% opacity
+            g.setColor(new Color(211, 211, 211, (int) (255 * (gridVisibility/100.0)))); // White with opactiy determined by user
             for (int x = GRID_OFFSET_X; x <= GRID_OFFSET_X + GAME_WIDTH; x += BLOCK_SIZE) {
                 g.drawLine(x, gridDrawOffset, x, GAME_HEIGHT - BOTTOM_PANEL_HEIGHT);
             }
@@ -250,9 +278,11 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             gameInterface.updateState(pieceQueue, heldPiece, currentPiece, pieceX, pieceY, currentState.toString(), isCountingdown);
             gameInterface.drawQueue(g);
             gameInterface.drawHeldPiece(g);
-            gameInterface.drawGhostPiece(g, grid);
+            gameInterface.drawGhostPiece(g, grid, ghostVisibility);
             gameInterface.drawStats(g, gameTimer.getFormattedTime(), gameTimer.getTimeRemaining(), gameTimer.getElapsedTime(), grid.getPiecesPlaced(), grid.getLinesCleared());
-            gameInterface.drawActionText(g);
+            if(actionTextOn){
+                gameInterface.drawActionText(g);
+            }
             if (isCountingdown) {
                 drawCountdown(g);
             }
@@ -298,15 +328,15 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     private void handleDAS() {
         if (lastKeyPressed == -1 && leftKeyPressed) { // Move left if last key was left
-            if (dasCharge >= DAS_DELAY) {
-                if (dasCharge % ARR_DELAY == 0) {
+            if (dasCharge >= dasDelay) {
+                if (dasCharge % arrDelay == 0) {
                     movePieceHorizontally(-1);
                 }
             }
             dasCharge++;
         } else if (lastKeyPressed == 1 && rightKeyPressed) { // Move right if last key was right
-            if (dasCharge >= DAS_DELAY) {
-                if (dasCharge % ARR_DELAY == 0) {
+            if (dasCharge >= dasDelay) {
+                if (dasCharge % arrDelay == 0) {
                     movePieceHorizontally(1);
                 }
             }
@@ -324,10 +354,10 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         double delta = 0;
         long now;
         long elapsedTime;
-        int adjustedDropInterval;
+        double adjustedDropInterval;
 
         long lastDropTime = System.nanoTime();
-        int dropInterval = 500000000; // 500ms in nanoseconds
+        double dropInterval = 1000000000; // gravity interval, can be sped up in different modes
         
         while (true) {
             now = System.nanoTime();
@@ -341,11 +371,12 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 delta--;
             }        
 
-
             if (softDropActive) {
-                adjustedDropInterval = dropInterval / 30; // If soft drop is active, drop faster
+                adjustedDropInterval = 500000000 / softdropFactor; // If soft drop is active, drop faster
+                lockDelayTime = softdropFactor; // Increase lock delay for soft drop to be equal to without soft drop
             } else {
                 adjustedDropInterval = dropInterval; // If soft drop is not active, use normal interval
+                lockDelayTime = 1;
             }
             
             if (!isCountingdown && elapsedTime > adjustedDropInterval) {
@@ -380,24 +411,26 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 restartGame();
                 return;
             }            
+
+            updateSettings(settings);
         }
     
         if (!checkCollision(pieceX, pieceY + 1) && currentState != GameState.MENU) {
             pieceY++;
-            currentLockDelayFrames = 0;
+            currentLockDelayTime = 0;
             isLockDelayActive = false;
             movementCounter = 0;
         } else {
             // Piece has landed
             if (!isLockDelayActive) {
                 isLockDelayActive = true;
-                currentLockDelayFrames = 0;
+                currentLockDelayTime = 0;
             }
     
-            currentLockDelayFrames++;
+            currentLockDelayTime++;
     
             // Lock the piece after lock delay or max movements
-            if (currentLockDelayFrames >= lockDelayFrames || movementCounter >= MAX_MOVEMENTS) {
+            if (currentLockDelayTime >= lockDelayTime || movementCounter >= MAX_MOVEMENTS) {
 
                 grid.addPiece(currentPiece, pieceX, pieceY);
                 updateLinesCleared(isTSpin()); 
@@ -447,14 +480,11 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     }
 
     private void hardDrop() {
-        isLockDelayActive = true;
-
         while (!checkCollision(pieceX, pieceY + 1)) {
             pieceY++;
         }
         grid.addPiece(currentPiece, pieceX, pieceY);
         updateLinesCleared(isTSpin()); // Centralized update for lines cleared
-        isLockDelayActive = false;
         spawnNewPiece();
     }
 
@@ -463,9 +493,25 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         grid.clearFullLines(); // Clear lines in the grid
         currentLinesCleared = grid.getLinesCleared() - previousLinesCleared;
 
+        //Track back to backs
+        if(isTspin || currentLinesCleared == 4){
+            backToBackCounter++;
+        }
+        else if (currentLinesCleared > 0){
+            backToBackCounter = 0;
+        }
+
+        //Track combos
+        if(currentLinesCleared > 0){
+            comboCounter++;
+        }
+        else{
+            comboCounter = 0;
+        }
+
         // Trigger action text
         if(currentLinesCleared > 0){ // Only trigger if lines were cleared
-            gameInterface.triggerActionText(currentLinesCleared, isTspin, isGridEmpty());
+            gameInterface.triggerActionText(currentLinesCleared, isTspin, isGridEmpty(), backToBackCounter, comboCounter);
         }
     }
 
@@ -484,7 +530,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         if (!checkCollision(pieceX + direction, pieceY)) {
             pieceX += direction;
             if (isLockDelayActive) {
-                currentLockDelayFrames = 0;
+                currentLockDelayTime = 0;
                 movementCounter++;
             }
         }
@@ -509,7 +555,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         
         // Reset lock delay and movement counter on successful wall kick
         if (isLockDelayActive) {
-            currentLockDelayFrames = 0;
+            currentLockDelayTime = 0;
             movementCounter = 0;
         }
         
@@ -744,11 +790,13 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                         System.out.println("Corner " + i + " at [" + row + ", " + col + "]");
                     }
 
+                    System.out.println("Handing Settings: " + dasDelay + " " + arrDelay + " " + softdropFactor + " " + audioEnabled + " " + musicVolume + " " + sfxVolume + " " + gridVisibility + " " + ghostVisibility + " " + actionTextOn);
+
             }
         
             // Reset lock delay if piece was moved or rotated until max movement reached
             if (pieceWasMoved && isLockDelayActive && movementCounter < MAX_MOVEMENTS) {
-                currentLockDelayFrames = 0;
+                currentLockDelayTime = 0;
                 movementCounter++;
             }
         

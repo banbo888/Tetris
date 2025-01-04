@@ -2,19 +2,16 @@
 import java.awt.*;
 
 public class Grid {
-    private static final int ROWS = 20;
-    private static final int COLS = 10;
+    public static final int ROWS = 20;
+    public static final int COLS = 10;
     private int[][] grid;
     private Color[][] colors;
     public int linesCleared = 0;
+    public int piecesPlaced = 0;
 
     public Grid() {
         grid = new int[ROWS][COLS];
         colors = new Color[ROWS][COLS];
-        initializeGrid();
-    }
-
-    private void initializeGrid() {
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
                 grid[row][col] = 0;
@@ -27,12 +24,15 @@ public class Grid {
         int[][] shape = piece.getShape();
         for (int row = 0; row < shape.length; row++) {
             for (int col = 0; col < shape[row].length; col++) {
-                if (shape[row][col] == 1) {
+                if (shape[row][col] == 1) { 
                     grid[y + row][x + col] = 1;
                     colors[y + row][x + col] = piece.getColor(); // Use the piece's actual color
                 }
             }
         }
+
+        piecesPlaced++;
+
     }
 
     public boolean checkCollision(Tetromino piece, int x, int y) {
@@ -54,7 +54,6 @@ public class Grid {
 
 
     public void clearFullLines() {
-
         for (int row = 0; row < ROWS; row++) {
             boolean full = true;
             for (int col = 0; col < COLS; col++) {
@@ -77,20 +76,40 @@ public class Grid {
         return linesCleared;
     }
 
-    public void resetStats(){
-        linesCleared = 0;
+    public int getPiecesPlaced(){
+        return piecesPlaced;
     }
 
-    public void draw(Graphics g, int offsetX) {
+    public void resetStats(){
+        linesCleared = 0;
+        piecesPlaced = 0;
+    }
+
+    public boolean isOccupied(int row, int col) {
+        // Check if the row and column are within grid bounds
+        if (row < 0 || row >= ROWS || col < 0 || col >= COLS) {
+            return true; // Treat out-of-bounds as occupied to prevent piece movement
+        }
+        return grid[row][col] == 1;
+    }
+
+    public void draw(Graphics g, int offsetX, int offsetY) {
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
                 if (grid[row][col] != 0) {
                     g.setColor(colors[row][col]);
-                    g.fillRect(offsetX + col * Tetromino.BLOCK_SIZE, row * Tetromino.BLOCK_SIZE,
-                               Tetromino.BLOCK_SIZE, Tetromino.BLOCK_SIZE);
-                    g.setColor(Color.BLACK);
-                    g.drawRect(offsetX + col * Tetromino.BLOCK_SIZE, row * Tetromino.BLOCK_SIZE,
-                               Tetromino.BLOCK_SIZE, Tetromino.BLOCK_SIZE);
+                    g.fillRect(
+                        offsetX + col * Tetromino.BLOCK_SIZE, 
+                        offsetY + row * Tetromino.BLOCK_SIZE,
+                        Tetromino.BLOCK_SIZE, 
+                        Tetromino.BLOCK_SIZE
+                    );
+                    g.drawRect(
+                        offsetX + col * Tetromino.BLOCK_SIZE, 
+                        offsetY + row * Tetromino.BLOCK_SIZE,
+                        Tetromino.BLOCK_SIZE, 
+                        Tetromino.BLOCK_SIZE
+                    );
                 }
             }
         }

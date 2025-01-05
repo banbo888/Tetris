@@ -53,7 +53,7 @@ public class GameInterface {
         this.isCountingDown = isCountingDown;
     }
 
-    public void drawStats(Graphics g, String timeElapsedFormatted, String timeRemaining, long timeElapsedMiliseconds, int piecesPlaced, int linesCleared) {
+    public void drawStats(Graphics g, String timeElapsedFormatted, String timeRemaining, long timeElapsedMiliseconds, int piecesPlaced, int linesCleared, int score, int level) {
         String timeString;
         String mainTime;
         String milliseconds;
@@ -123,13 +123,32 @@ public class GameInterface {
         g.setFont(new Font("SansSerif", Font.PLAIN, 25)); // Smaller font for milliseconds
         g.drawString(milliseconds, posX + mainTimeWidth, posY); // Offset by the width of main time
 
-        // Draw "LINES LEFT:" label
-        g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Smaller font for the label
-        g.drawString("LINES LEFT:", posX, posY - 140);
+        if(gameState == "GAME_SPRINT"){
+            // Draw "LINES LEFT:" label
+            g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Smaller font for the label
+            g.drawString("LINES LEFT:", posX, posY - 140);
 
-        // Draw lines remaining counter
-        g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Larger font for main time
-        g.drawString(String.valueOf(linesRemaining), posX, posY - 95);
+            // Draw lines remaining counter
+            g.setFont(new Font("SansSerif", Font.BOLD, 35));
+            g.drawString(String.valueOf(linesRemaining), posX, posY - 95);
+        }
+        else if(gameState == "GAME_TIMETRIAL"){
+            // Draw "LINES LEFT:" label
+            g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Smaller font for the label
+            g.drawString("SCORE:", posX, posY - 140);
+
+            // Draw lines remaining counter
+            g.setFont(new Font("SansSerif", Font.BOLD, 35)); 
+            g.drawString(String.valueOf(score), posX, posY - 95);
+
+            // Draw LEVEL:" label
+            g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Smaller font for the label
+            g.drawString("LEVEL:", GRID_OFFSET_X + 300 + 30, posY - 40);
+
+            // Draw lines remaining counter
+            g.setFont(new Font("SansSerif", Font.BOLD, 35)); 
+            g.drawString(String.valueOf(level), GRID_OFFSET_X + 300 + 30, posY);
+        }
 
         //Draw "PIECES PLACED:" label
         g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Smaller font for the label
@@ -151,7 +170,7 @@ public class GameInterface {
         Tetromino[] piecesArray;
         int startX = GRID_OFFSET_X + 300 + 30; // Right side panel
         int startY = 120;              // Start Y position for the first piece in the queue
-        int spacing = 100;            // Vertical spacing between queued pieces
+        int spacing = 85;            // Vertical spacing between queued pieces
     
         // Draw the "Next Pieces" label
         g.setColor(Color.WHITE);

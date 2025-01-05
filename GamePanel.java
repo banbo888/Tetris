@@ -45,10 +45,14 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     Grid grid;
     PieceBagGenerator bagGenerator;
     GameState currentState = GameState.MENU; // Current state of the game
-    Menu menu;
+    GameState previousState;
+    MenuScreen menu;
+    ExitScreen pauseScreen;
+    ExitScreen loseScreen;
+    ScoreScreen scoreScreen;
     Timer gameTimer;
     GameInterface gameInterface;
-    Settings settings;
+    SettingsManager settings;
 
     private Queue<Tetromino> pieceQueue;
     private int pieceX = GRID_COLS / 2 - 2;
@@ -66,6 +70,13 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private int backToBackCounter = 0; // Check for back-to-back (quads and Tspins)
     private int comboCounter = 0;
     private boolean lastKeyValidRotation = false; // Check if the last key pressed was a rotation
+    private int score = 0;
+    private int harddropDistance = 0;
+    private String result = "";
+
+    //Gravity logic
+    private int level;
+    private double gravityFactor;
 
 
     // Enum for game states
@@ -82,9 +93,12 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     }
     
     public GamePanel() {
-        menu = new Menu(this);
+        menu = new MenuScreen(this);
+        pauseScreen = new ExitScreen(this, "EXIT TO MAIN MENU?", "RESUME", "EXIT TO MAIN MENU");
+        loseScreen = new ExitScreen(this, "GAME OVER", "TRY AGAIN", "EXIT TO MAIN MENU");
+        scoreScreen = new ScoreScreen(this, result);
         grid = new Grid();
-        settings = new Settings();
+        settings = new SettingsManager();
         gameTimer = new Timer();
         pieceQueue = new LinkedList<>();
         bagGenerator = new PieceBagGenerator();
@@ -109,8 +123,62 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
         gameThread = new Thread(this);
         gameThread.start();
+
+        // Action Listeners for Pause Screen
+        pauseScreen.getResumeButton().addActionListener(e -> {
+            currentState = previousState; // resume the game
+            remove(pauseScreen);
+            revalidate();
+            repaint();
+        });
+
+        pauseScreen.getMainMenuButton().addActionListener(e -> {
+            currentState = GameState.MENU;
+            menu.resetToMainMenu(null);
+            remove(pauseScreen);
+            revalidate();
+            repaint();
+        });
+
+        // Action Listseners for Lose Screen
+        loseScreen.getResumeButton().addActionListener(e -> {
+            currentState = previousState;
+            restartGame();
+            remove(loseScreen);
+            revalidate();
+            repaint();
+            loseScreen.resetButtonAppearance(loseScreen.getMainMenuButton());
+        });
+
+        loseScreen.getMainMenuButton().addActionListener(e -> {
+            currentState = GameState.MENU;
+            menu.resetToMainMenu(null);
+            remove(loseScreen);
+            revalidate();
+            repaint();
+            loseScreen.resetButtonAppearance(loseScreen.getMainMenuButton());
+        });
     }
 
+
+    public void returntoGame() {
+        currentState = previousState;
+        remove(scoreScreen);
+        restartGame();
+        revalidate();
+        repaint();
+        scoreScreen.resetButtonAppearance(scoreScreen.getAgainButton());
+    }
+
+    public void returntoMenu(){
+        currentState = GameState.MENU;
+        menu.resetToMainMenu(null);
+        remove(scoreScreen);
+        revalidate();
+        repaint();
+        scoreScreen.resetButtonAppearance(scoreScreen.getMenuButton());
+    }
+    
     public void startGame(int mode) {
         switch (mode) {
             case 1:
@@ -204,11 +272,17 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         currentPiece = pieceQueue.poll();
         spawnNewPiece();
         
-        //Restart stats
+        // Restart stats
         grid.resetStats();
+        score = 0;
+        level = 0;
+        gravityFactor = 1;
         backToBackCounter = 0;
         gameTimer.reset();  // Reset the timer
         gameTimer.start();  // Restart the timer
+
+        // Store game mode
+        previousState = currentState;
 
         // Repaint to update the display
         repaint();
@@ -230,7 +304,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         pieceQueue.add(bagGenerator.getNextPiece());
     }
 
-    public void updateSettings(Settings newSettings) {
+    public void updateSettings(SettingsManager newSettings) {
         this.settings = newSettings;
         arrDelay = settings.getArr();
         dasDelay = settings.getDas();
@@ -247,7 +321,18 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         super.paint(g);
         if (currentState == GameState.MENU) {
             menu.setVisible(true);
-        } else {
+        } 
+        else if (currentState == GameState.PAUSE) {
+            menu.setVisible(false);
+        }
+        else if (currentState == GameState.LOSE_SCREEN){
+            loseScreen.setVisible(true);     
+        }
+        else if (currentState == GameState.SCORE_SCREEN){
+            menu.setVisible(false);
+            loseScreen.setVisible(false);
+        }
+        else {
             menu.setVisible(false);
             
             // Draw top panel
@@ -282,7 +367,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             gameInterface.drawQueue(g);
             gameInterface.drawHeldPiece(g);
             gameInterface.drawGhostPiece(g, grid, ghostVisibility);
-            gameInterface.drawStats(g, gameTimer.getFormattedTime(), gameTimer.getTimeRemaining(), gameTimer.getElapsedTime(), grid.getPiecesPlaced(), grid.getLinesCleared());
+            gameInterface.drawStats(g, gameTimer.getFormattedTime(), gameTimer.getTimeRemaining(), gameTimer.getElapsedTime(), grid.getPiecesPlaced(), grid.getLinesCleared(), score, level);
             if(actionTextOn){
                 gameInterface.drawActionText(g);
             }
@@ -370,6 +455,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             
             if (delta >= 1) {
                 handleDAS();
+                gameCondition();
                 repaint();
                 delta--;
             }        
@@ -378,8 +464,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 adjustedDropInterval = 500000000 / softdropFactor; // If soft drop is active, drop faster
                 lockDelayTime = softdropFactor; // Increase lock delay for soft drop to be equal to without soft drop
             } else {
-                adjustedDropInterval = dropInterval; // If soft drop is not active, use normal interval
-                lockDelayTime = 1;
+                adjustedDropInterval = dropInterval / gravityFactor; // If soft drop is not active, use normal interval
+                lockDelayTime = (int)gravityFactor;
             }
             
             if (!isCountingdown && elapsedTime > adjustedDropInterval) {
@@ -392,34 +478,14 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     
     private void updateGame() {
-        // Check for game over condition first
-        if (isGameOver() && currentState != GameState.MENU) {
-            currentState = GameState.LOSE_SCREEN;
-            gameTimer.stop();
-            Object[] options = {"Return to Main Menu", "Try Again"};
-            int choice = JOptionPane.showOptionDialog(this,
-                "Game Over!",
-                "Game Over",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null,
-                options,
-                options[0]);
-            
-            if (choice == JOptionPane.YES_OPTION) {
-                currentState = GameState.MENU;
-                menu.resetToMainMenu(null);
-                return;
-            } else if (choice == JOptionPane.NO_OPTION) {
-                restartGame();
-                return;
-            }            
-
-            updateSettings(settings);
-        }
+        updateSettings(settings);
     
         if (!checkCollision(pieceX, pieceY + 1) && currentState != GameState.MENU) {
             pieceY++;
+            // Add 1 point per cell soft dropped
+            if(softDropActive){
+                score++; 
+            }
             currentLockDelayTime = 0;
             isLockDelayActive = false;
             movementCounter = 0;
@@ -440,15 +506,31 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 spawnNewPiece();
             }
         }
-    
+    }
+
+    private void gameCondition(){
         if(grid.getLinesCleared() >= 40 && currentState == GameState.GAME_SPRINT){
             currentState = GameState.SCORE_SCREEN;
+            result = gameTimer.getFormattedTime();
             gameTimer.stop();
+            // Add and show score screen
+            remove(scoreScreen);
+            scoreScreen = new ScoreScreen(this, result);
+            add(scoreScreen, BorderLayout.CENTER);
+            scoreScreen.setVisible(true);
+            revalidate();
         }
 
         if(gameTimer.getElapsedTime() >= 120000 && currentState == GameState.GAME_TIMETRIAL){
             currentState = GameState.SCORE_SCREEN;
+            result = String.valueOf(score);
             gameTimer.stop();
+            // Add and show score screen
+            remove(scoreScreen);
+            scoreScreen = new ScoreScreen(this, result);
+            add(scoreScreen, BorderLayout.CENTER);
+            scoreScreen.setVisible(true);
+            revalidate();
         }
     }
 
@@ -464,20 +546,26 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         pieceX = (GRID_COLS - currentPiece.getShapeWidth()) / 2;
         pieceY = 0;
         canHold = true;
-    }
 
-    private boolean isGameOver() {
-        // Check if the new piece collides at spawn position
-        if (checkCollision(pieceX, pieceY)) {
-            return true;
+        // Reset movement counter, harddrop distance, and softdrop distance
+        movementCounter = 0;
+
+        // Check if game can spawn piece (if not, game over)
+        if (checkCollision(pieceX, pieceY) && currentState != GameState.MENU) {
+
+            currentState = GameState.LOSE_SCREEN;
+            
+            add(loseScreen, BorderLayout.CENTER);
+
+            revalidate();
+            repaint();
         }
-        
-        return false;
     }
 
     private void hardDrop() {
         while (!checkCollision(pieceX, pieceY + 1)) {
             pieceY++;
+            score++;
         }
         grid.addPiece(currentPiece, pieceX, pieceY);
         updateLinesCleared(isTSpin()); // Centralized update for lines cleared
@@ -487,6 +575,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private void updateLinesCleared(boolean isTspin) {
         int previousLinesCleared = grid.getLinesCleared();
         grid.clearFullLines(); // Clear lines in the grid
+        controlGravity(); // Track levels
         currentLinesCleared = grid.getLinesCleared() - previousLinesCleared;
 
         //Track back to backs
@@ -497,7 +586,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             backToBackCounter = 0;
         }
 
-        //Track combos
+        // Track combos
         if(currentLinesCleared > 0){
             comboCounter++;
         }
@@ -505,10 +594,124 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             comboCounter = 0;
         }
 
+        // Calculate Score
+        calculateScore(isTspin);
+
         // Trigger action text
         if(currentLinesCleared > 0){ // Only trigger if lines were cleared
             gameInterface.triggerActionText(currentLinesCleared, isTspin, isGridEmpty(), backToBackCounter, comboCounter);
         }
+    }
+
+    private void controlGravity(){
+        int linesCleared = grid.getLinesCleared();
+
+        if(currentState != GameState.GAME_TIMETRIAL){
+            gravityFactor = 1;
+        }
+        else if(currentState == GameState.GAME_TIMETRIAL){
+            if(linesCleared < 3){
+                level = 1;
+                gravityFactor = 1;
+            }
+            else if(linesCleared < 8){
+                level = 2;
+                gravityFactor = 1.555;
+            }
+            else if(linesCleared < 15){
+                level = 3;
+                gravityFactor = 2.475;
+            }
+            else if(linesCleared < 24){
+                level = 4;
+                gravityFactor = 4.0161;
+            }
+            else if(linesCleared < 35){
+                level = 5;
+                gravityFactor = 6.667;
+            }
+            else if(linesCleared < 48){
+                level = 6;
+                gravityFactor = 11.367;
+            }
+            else if(linesCleared < 63){
+                level = 7;
+                gravityFactor = 19.802;
+            }
+            else if(linesCleared < 80){
+                level = 8;
+                gravityFactor = 35.336;
+            }
+            else if(linesCleared < 99){
+                level = 9;
+                gravityFactor = 64.516;
+            }
+            else {
+                level = 10;
+                gravityFactor = 120.919;
+            }
+        }
+    }
+
+    private void calculateScore(boolean isTspin){
+        // Calculate score
+        if(currentLinesCleared == 0){
+            if(isTspin){
+                score += 400 * level;
+            }
+            else{
+                score += 0;
+            }
+        }
+        else if(currentLinesCleared == 1){
+            if(isTspin){
+                score+= 800 * level;
+                if(backToBackCounter > 1){
+                    score*=1.5;
+                }
+            }
+            else{
+                score += 100 * level;
+            }
+        }
+        else if(currentLinesCleared == 2){
+            if(isTspin){
+                score += 1200 * level;
+                if(backToBackCounter > 1){
+                    score*=1.5;
+                }
+            }
+            else{
+                score += 300 * level;
+            }
+        }
+        else if(currentLinesCleared == 3){
+            if(isTspin){
+                score += 1600 * level;
+                if(backToBackCounter > 1){
+                    score*=1.5;
+                }
+            }
+            else{
+                score += 500 * level;
+            }
+        }
+        else if(currentLinesCleared == 4){
+            score += 800 * level;
+            if(backToBackCounter > 1){
+                score*=1.5;
+            }
+        }
+
+        if(isGridEmpty()){
+            score += 3500 * level;
+        }
+
+        if(comboCounter > 1){
+            score += level * (50 * (comboCounter-1));
+        }
+
+        score += 2 * harddropDistance; //2 points per cell dropped
     }
 
     private boolean isGridEmpty(){
@@ -651,19 +854,20 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                     break;
                 
                 case KeyEvent.VK_ESCAPE:
-                    // Show confirmation popup
-                    int response = JOptionPane.showConfirmDialog(
-                        null,
-                        "Do you want to return to the main menu?",
-                        "Confirm Exit",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.QUESTION_MESSAGE
-                    );
-                    
-                    // Check the user's choice
-                    if (response == JOptionPane.YES_OPTION) {
-                        currentState = GameState.MENU;
-                        menu.resetToMainMenu(null);
+                    if (currentState != GameState.MENU) {
+                        if (currentState == GameState.PAUSE) {
+                            // Unpause
+                            remove(pauseScreen);
+                            currentState = previousState;
+                        } else {
+                            // Pause
+                            currentState = GameState.PAUSE;
+                            add(pauseScreen, BorderLayout.CENTER);
+                            pauseScreen.resetButtonAppearance(pauseScreen.getMainMenuButton());
+                            pauseScreen.resetButtonAppearance(pauseScreen.getResumeButton());
+                        }
+                        revalidate();
+                        repaint();
                     }
                     break;
             }

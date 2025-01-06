@@ -359,11 +359,16 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             );
             
             // Game Interface
-            gameInterface.updateState(pieceQueue, heldPiece, currentPiece, pieceX, pieceY, currentState.toString(), isCountingdown);
+            gameInterface.updateState(pieceQueue, heldPiece, currentPiece, pieceX, pieceY, 
+            currentState.toString(), isCountingdown, powerUpAvailable);
+        
             gameInterface.drawQueue(g);
             gameInterface.drawHeldPiece(g);
             gameInterface.drawGhostPiece(g, grid, ghostVisibility);
-            gameInterface.drawStats(g, gameTimer.getFormattedTime(), gameTimer.getTimeRemaining(), gameTimer.getElapsedTime(), grid.getPiecesPlaced(), grid.getLinesCleared(), score, level);
+            gameInterface.drawStats(g, gameTimer.getFormattedTime(), gameTimer.getTimeRemaining(), 
+            gameTimer.getElapsedTime(), grid.getPiecesPlaced(), grid.getLinesCleared(), 
+            score, level);
+            
             if(actionTextOn){
                 gameInterface.drawActionText(g);
             }
@@ -504,29 +509,61 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
-    private void gameCondition(){
-        if(grid.getLinesCleared() >= 40 && currentState == GameState.GAME_SPRINT){
-            currentState = GameState.SCORE_SCREEN;
-            result = gameTimer.getFormattedTime();
-            gameTimer.stop();
-            // Add and show score screen
-            remove(scoreScreen);
-            scoreScreen = new ScoreScreen(this, result, currentState.toString());
-            add(scoreScreen, BorderLayout.CENTER);
-            scoreScreen.setVisible(true);
-            revalidate();
+    private boolean powerUpAvailable = false;
+private boolean slowTimeActive = false;
+private long slowTimeStarted = 0;
+private static final long SLOW_TIME_DURATION = 3000; // 3 seconds in milliseconds
+
+private void gameCondition() {
+    if (grid.getLinesCleared() >= 40 && currentState == GameState.GAME_SPRINT) {
+        currentState = GameState.SCORE_SCREEN;
+        result = gameTimer.getFormattedTime();
+        gameTimer.stop();
+        remove(scoreScreen);
+        scoreScreen = new ScoreScreen(this, result, currentState.toString());
+        add(scoreScreen, BorderLayout.CENTER);
+        scoreScreen.setVisible(true);
+        revalidate();
+    }
+
+    if (gameTimer.getElapsedTime() >= 120000 && currentState == GameState.GAME_TIMETRIAL) {
+        currentState = GameState.SCORE_SCREEN;
+        result = String.format("%,d", score);
+        gameTimer.stop();
+        remove(scoreScreen);
+        scoreScreen = new ScoreScreen(this, result, currentState.toString());
+        add(scoreScreen, BorderLayout.CENTER);
+        scoreScreen.setVisible(true);
+        revalidate();
+    }
+
+    if (currentState == GameState.GAME_CHALLENGE) {
+        // Calculate difficulty based on time elapsed
+        long elapsedSeconds = gameTimer.getElapsedTime() / 1000;
+        gravityFactor = Math.min(120.919, 1 + (elapsedSeconds / 10.0)); // Increases by 0.1 every 1 second, caps at max speed
+
+        // Check for power-up availability
+        if (grid.getLinesCleared() > 0 && grid.getLinesCleared() % 10 == 0) {
+            powerUpAvailable = true;
         }
 
-        if(gameTimer.getElapsedTime() >= 120000 && currentState == GameState.GAME_TIMETRIAL){
-            currentState = GameState.SCORE_SCREEN;
-            result = String.format("%,d", score);
-            gameTimer.stop();
-            // Add and show score screen
-            remove(scoreScreen);
-            scoreScreen = new ScoreScreen(this, result, currentState.toString());
-            add(scoreScreen, BorderLayout.CENTER);
-            scoreScreen.setVisible(true);
-            revalidate();
+        // Handle slow time power-up
+        if (slowTimeActive) {
+            if (System.currentTimeMillis() - slowTimeStarted >= SLOW_TIME_DURATION) {
+                slowTimeActive = false;
+            } else {
+                gravityFactor *= 0.5; // Slow down pieces to half speed
+            }
+        }
+    }
+}
+
+    // Add this method to handle power-up activation
+    public void activateSlowTime() {
+        if (powerUpAvailable && !slowTimeActive && currentState == GameState.GAME_CHALLENGE) {
+            slowTimeActive = true;
+            powerUpAvailable = false;
+            slowTimeStarted = System.currentTimeMillis();
         }
     }
 
@@ -928,7 +965,9 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 case KeyEvent.VK_SPACE:
                     hardDrop();
                     break;
-        
+                case KeyEvent.VK_V:
+                    activateSlowTime();
+                    break;
                 case KeyEvent.VK_C:
                     holdPiece();
                     lastKeyValidRotation = false;

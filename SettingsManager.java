@@ -1,4 +1,4 @@
-public class Settings {
+public class SettingsManager {
     private int arr; // Auto-repeat rate
     private int das; // Delayed auto shift
     private int sdf; // Soft drop factor
@@ -9,7 +9,7 @@ public class Settings {
     private int ghostVisibility;
     private boolean actionTextOn;
 
-    public Settings() {
+    public SettingsManager() {
         // Default settings values
         this.arr = 1;
         this.das = 5;

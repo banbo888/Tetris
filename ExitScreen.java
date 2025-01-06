@@ -8,7 +8,7 @@ public class ExitScreen extends JPanel {
     private JPanel buttonsPanel;
     private JLabel exitLabel;
 
-    public ExitScreen(GamePanel gamePanel, String label, String button1, String button2) {
+    public ExitScreen(GamePanel gamePanel, String label, String button1, String button2, String type) {
         setLayout(new GridBagLayout()); // Changed to GridBagLayout for better centering
         setBackground(Color.BLACK); // More translucent background
 
@@ -35,7 +35,7 @@ public class ExitScreen extends JPanel {
         // Create Buttons
         resumeBotton = createMenuButton(button1);
         mainMenuButton = createMenuButton(button2);
-
+        
         // Add buttons to panel
         buttonsPanel.add(resumeBotton);
         buttonsPanel.add(mainMenuButton);

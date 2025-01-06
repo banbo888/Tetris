@@ -14,6 +14,10 @@ public class GameInterface {
     private String gameState;
     private boolean isCountingDown;
 
+    // Add new fields
+    private boolean powerUpAvailable = false;
+    private String powerUpText = "SLOW TIME READY!";
+
     //Action text
     private String actionText = "";
     private String tSpinText = "";
@@ -53,7 +57,8 @@ public class GameInterface {
         this.isCountingDown = isCountingDown;
     }
 
-    public void drawStats(Graphics g, String timeElapsedFormatted, String timeRemaining, long timeElapsedMiliseconds, int piecesPlaced, int linesCleared, int score, int level) {
+    public void drawStats(Graphics g, String timeElapsedFormatted, String timeRemaining, 
+    long timeElapsedMiliseconds, int piecesPlaced, int linesCleared, int score, int level) {
         String timeString;
         String mainTime;
         String milliseconds;
@@ -122,7 +127,14 @@ public class GameInterface {
         // Draw the milliseconds part
         g.setFont(new Font("SansSerif", Font.PLAIN, 25)); // Smaller font for milliseconds
         g.drawString(milliseconds, posX + mainTimeWidth, posY); // Offset by the width of main time
-
+        if (gameState == "GAME_CHALLENGE" && powerUpAvailable) {
+            g.setFont(new Font("SansSerif", Font.BOLD, 25));
+            g.setColor(Color.GREEN);
+            g.drawString(powerUpText, posX, posY - 90);
+            g.setFont(new Font("SansSerif", Font.PLAIN, 20));
+            g.setColor(Color.WHITE);
+            g.drawString("Press V to activate", posX, posY - 60);
+        }
         if(gameState == "GAME_SPRINT"){
             // Draw "LINES LEFT:" label
             g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Smaller font for the label
@@ -182,6 +194,20 @@ public class GameInterface {
         for (int i = 0; i < piecesArray.length; i++) {
             piecesArray[i].draw(g, startX, startY + (i * spacing));
         }
+    }
+
+    // Update updateState method to include power-up status
+    public void updateState(Queue<Tetromino> pieceQueue, Tetromino heldPiece, 
+            Tetromino currentPiece, int pieceX, int pieceY, String gameState, 
+            boolean isCountingDown, boolean powerUpAvailable) {
+        this.pieceQueue = pieceQueue;
+        this.heldPiece = heldPiece;
+        this.currentPiece = currentPiece;
+        this.pieceX = pieceX;
+        this.pieceY = pieceY;
+        this.gameState = gameState;
+        this.isCountingDown = isCountingDown;
+        this.powerUpAvailable = powerUpAvailable;
     }
 
     public void drawHeldPiece(Graphics g) {

@@ -35,6 +35,21 @@ public class Timer {
         }
     }
 
+    // Get the time remaining from 2 minutes (used for Time-Trial mode)
+    public String getTimeRemaining() {
+        long elapsedTime = getElapsedTime();
+        long remainingTime = 120000 - elapsedTime;
+
+        // Clamp to 0 if time has run out
+        remainingTime = Math.max(remainingTime, 0);
+
+        long minutes = (remainingTime / 60000) % 60;
+        long seconds = (remainingTime / 1000) % 60;
+        long milliseconds = remainingTime % 1000;
+
+        return String.format("%02d:%02d.%03d", minutes, seconds, milliseconds);
+    }
+
     // Format elapsed time as "MM:SS:mmm"
     public String getFormattedTime() {
         long elapsedTime = getElapsedTime();
@@ -43,6 +58,6 @@ public class Timer {
         long seconds = (elapsedTime / 1000) % 60;    // 1 second = 1,000 ms
         long milliseconds = elapsedTime % 1000;
 
-        return String.format("%02d:%02d:%03d", minutes, seconds, milliseconds);
+        return String.format("%02d:%02d.%03d", minutes, seconds, milliseconds);
     }
 }

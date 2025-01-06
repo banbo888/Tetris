@@ -6,7 +6,9 @@ public class ScoreScreen extends JPanel {
     private JButton againButton;
     private JButton menuButton;
 
-    public ScoreScreen(GamePanel gamePanel, String result) {
+    public ScoreScreen(GamePanel gamePanel, String result, String previousState) {
+        String title;
+
         setLayout(new GridBagLayout()); // Center everything
         setBackground(Color.BLACK);
 
@@ -17,7 +19,14 @@ public class ScoreScreen extends JPanel {
         containerPanel.setPreferredSize(new Dimension(400, 200));
 
         // Title label
-        JLabel titleLabel = new JLabel("FINAL TIME");
+        if(previousState == "GAME_SPRINT"){
+            title = "FINAL TIME";
+        }
+        else{
+            title = "SCORE";
+        }
+        
+        JLabel titleLabel = new JLabel(title);
         titleLabel.setFont(new Font("Monospaced", Font.BOLD, 36));
         titleLabel.setForeground(Color.BLUE);
         titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
@@ -43,6 +52,7 @@ public class ScoreScreen extends JPanel {
 
         againButton.addActionListener(e -> {
             gamePanel.returntoGame();
+            gamePanel.restartGame();
         });
         menuButton.addActionListener(e -> {
             gamePanel.returntoMenu();

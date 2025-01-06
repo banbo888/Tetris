@@ -94,9 +94,9 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     
     public GamePanel() {
         menu = new MenuScreen(this);
-        pauseScreen = new ExitScreen(this, "EXIT TO MAIN MENU?", "RESUME", "EXIT TO MAIN MENU");
-        loseScreen = new ExitScreen(this, "GAME OVER", "TRY AGAIN", "EXIT TO MAIN MENU");
-        scoreScreen = new ScoreScreen(this, result);
+        pauseScreen = new ExitScreen(this, "EXIT TO MAIN MENU?", "RESUME", "EXIT TO MAIN MENU", "PAUSE");
+        loseScreen = new ExitScreen(this, "GAME OVER", "TRY AGAIN", "EXIT TO MAIN MENU", "LOSE");
+        scoreScreen = new ScoreScreen(this, result, currentState.toString());
         grid = new Grid();
         settings = new SettingsManager();
         gameTimer = new Timer();
@@ -158,25 +158,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             repaint();
             loseScreen.resetButtonAppearance(loseScreen.getMainMenuButton());
         });
-    }
-
-
-    public void returntoGame() {
-        currentState = previousState;
-        remove(scoreScreen);
-        restartGame();
-        revalidate();
-        repaint();
-        scoreScreen.resetButtonAppearance(scoreScreen.getAgainButton());
-    }
-
-    public void returntoMenu(){
-        currentState = GameState.MENU;
-        menu.resetToMainMenu(null);
-        remove(scoreScreen);
-        revalidate();
-        repaint();
-        scoreScreen.resetButtonAppearance(scoreScreen.getMenuButton());
     }
     
     public void startGame(int mode) {
@@ -245,11 +226,12 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     }
 
 
-    private void restartGame() {
+    public void restartGame() {
         startCountdown();
 
         // Reset grid
         grid = new Grid();
+
         // Reset piece queue and generator
         pieceQueue.clear();
         bagGenerator = new PieceBagGenerator(); // Reset the bag generator
@@ -321,20 +303,34 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         super.paint(g);
         if (currentState == GameState.MENU) {
             menu.setVisible(true);
+            pauseScreen.setVisible(false);
+            loseScreen.setVisible(false);
+            scoreScreen.setVisible(false);
         } 
         else if (currentState == GameState.PAUSE) {
+            pauseScreen.setVisible(true);
             menu.setVisible(false);
+            loseScreen.setVisible(false);
+            scoreScreen.setVisible(false);        
         }
         else if (currentState == GameState.LOSE_SCREEN){
-            loseScreen.setVisible(true);     
+            loseScreen.setVisible(true);
+            menu.setVisible(false);
+            pauseScreen.setVisible(false);
+            scoreScreen.setVisible(false);        
         }
         else if (currentState == GameState.SCORE_SCREEN){
+            scoreScreen.setVisible(true);
             menu.setVisible(false);
+            pauseScreen.setVisible(false);
             loseScreen.setVisible(false);
         }
         else {
             menu.setVisible(false);
-            
+            pauseScreen.setVisible(false);
+            loseScreen.setVisible(false);
+            scoreScreen.setVisible(false);     
+
             // Draw top panel
             g.setColor(Color.BLACK);
             g.fillRect(GRID_OFFSET_X, 0, GAME_WIDTH, TOP_PANEL_HEIGHT);
@@ -480,7 +476,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private void updateGame() {
         updateSettings(settings);
     
-        if (!checkCollision(pieceX, pieceY + 1) && currentState != GameState.MENU) {
+        if (!checkCollision(pieceX, pieceY + 1) && currentState != GameState.MENU && currentState != GameState.SCORE_SCREEN && currentState != GameState.LOSE_SCREEN) {
             pieceY++;
             // Add 1 point per cell soft dropped
             if(softDropActive){
@@ -515,7 +511,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             gameTimer.stop();
             // Add and show score screen
             remove(scoreScreen);
-            scoreScreen = new ScoreScreen(this, result);
+            scoreScreen = new ScoreScreen(this, result, currentState.toString());
             add(scoreScreen, BorderLayout.CENTER);
             scoreScreen.setVisible(true);
             revalidate();
@@ -523,11 +519,11 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
         if(gameTimer.getElapsedTime() >= 120000 && currentState == GameState.GAME_TIMETRIAL){
             currentState = GameState.SCORE_SCREEN;
-            result = String.valueOf(score);
+            result = String.format("%,d", score);
             gameTimer.stop();
             // Add and show score screen
             remove(scoreScreen);
-            scoreScreen = new ScoreScreen(this, result);
+            scoreScreen = new ScoreScreen(this, result, currentState.toString());
             add(scoreScreen, BorderLayout.CENTER);
             scoreScreen.setVisible(true);
             revalidate();
@@ -551,7 +547,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         movementCounter = 0;
 
         // Check if game can spawn piece (if not, game over)
-        if (checkCollision(pieceX, pieceY) && currentState != GameState.MENU) {
+        if (checkCollision(pieceX, pieceY) && currentState != GameState.MENU && currentState != GameState.SCORE_SCREEN && currentState != GameState.LOSE_SCREEN && currentState != GameState.PAUSE) {
 
             currentState = GameState.LOSE_SCREEN;
             
@@ -654,6 +650,15 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     }
 
     private void calculateScore(boolean isTspin){
+        double backToBackMultiplier;
+
+        if(backToBackCounter > 1){
+            backToBackMultiplier = 1.5;
+        }
+        else{
+            backToBackMultiplier = 1;
+        }
+
         // Calculate score
         if(currentLinesCleared == 0){
             if(isTspin){
@@ -665,10 +670,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
         else if(currentLinesCleared == 1){
             if(isTspin){
-                score+= 800 * level;
-                if(backToBackCounter > 1){
-                    score*=1.5;
-                }
+                score+= 800 * level * backToBackMultiplier;
             }
             else{
                 score += 100 * level;
@@ -676,10 +678,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
         else if(currentLinesCleared == 2){
             if(isTspin){
-                score += 1200 * level;
-                if(backToBackCounter > 1){
-                    score*=1.5;
-                }
+                score += 1200 * level * backToBackMultiplier;
             }
             else{
                 score += 300 * level;
@@ -687,20 +686,14 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
         else if(currentLinesCleared == 3){
             if(isTspin){
-                score += 1600 * level;
-                if(backToBackCounter > 1){
-                    score*=1.5;
-                }
+                score += 1600 * level * backToBackMultiplier;
             }
             else{
                 score += 500 * level;
             }
         }
         else if(currentLinesCleared == 4){
-            score += 800 * level;
-            if(backToBackCounter > 1){
-                score*=1.5;
-            }
+            score += 800 * level * backToBackMultiplier;
         }
 
         if(isGridEmpty()){
@@ -1031,4 +1024,24 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     @Override
     public void keyTyped(KeyEvent e) {}
 
+
+    // Methods for Score Screen Buttons
+    public void returntoGame() {
+        currentState = previousState;
+        remove(scoreScreen);
+        restartGame();
+        revalidate();
+        repaint();
+        scoreScreen.resetButtonAppearance(scoreScreen.getAgainButton());
+    }
+
+    public void returntoMenu(){
+        currentState = GameState.MENU;
+        menu.resetToMainMenu(null);
+        remove(scoreScreen);
+        revalidate();
+        repaint();
+        scoreScreen.resetButtonAppearance(scoreScreen.getMenuButton());
+    }
+    
 }

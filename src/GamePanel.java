@@ -54,6 +54,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     GameInterface gameInterface;
     SettingsManager settings;
     ScoreManager scoreManager;
+    SoundManager sound;
 
     private Queue<Tetromino> pieceQueue;
     private int pieceX = GRID_COLS / 2 - 2;
@@ -111,7 +112,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         initializePieceQueue();
         updateSettings(settings);
 
-
         currentPiece = pieceQueue.poll();
         spawnNewPiece();
 
@@ -129,6 +129,9 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         gameThread = new Thread(this);
         gameThread.start();
 
+        
+        SoundManager.playMusic("music/TetrisTheme.wav");
+
         // Action Listeners for Pause Screen
         pauseScreen.getResumeButton().addActionListener(e -> {
             currentState = previousState; // resume the game
@@ -139,6 +142,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
         pauseScreen.getMainMenuButton().addActionListener(e -> {
             currentState = GameState.MENU;
+
             menu.resetToMainMenu(null);
             remove(pauseScreen);
             revalidate();
@@ -403,6 +407,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             heldPiece = temp;
             heldPiece.resetRotation(); // Reset rotation for the piece being held
             
+            SoundManager.playSound("sfx/hold.wav");
+            
             // Reset piece position
             pieceX = GRID_COLS / 2 - 2;
             pieceY = 0;
@@ -481,8 +487,20 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 updateGame(); // Call the game update function
                 lastDropTime = now; // Update the last drop time to the current time
             }
+
+            updateAudioSettings();
         }
 
+    }
+
+    private void updateAudioSettings() {
+        if (!audioEnabled) {
+            SoundManager.setMusicVolume(0);
+            SoundManager.setSfxVolume(0);
+        } else {
+            SoundManager.setMusicVolume(settings.getMusicVolume() / 100.0f);
+            SoundManager.setSfxVolume(settings.getSfxVolume() / 100.0f);
+        }
     }
 
     
@@ -524,7 +542,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private static final long SLOW_TIME_DURATION = 3000; // 3 seconds in milliseconds
 
     private void gameCondition() {
-        if (grid.getLinesCleared() >= 2 && currentState == GameState.GAME_SPRINT) {
+        if (grid.getLinesCleared() >= 40 && currentState == GameState.GAME_SPRINT) {
             currentState = GameState.SCORE_SCREEN;
             result = gameTimer.getFormattedTime();
             gameTimer.stop();
@@ -615,6 +633,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             pieceY++;
             score++;
         }
+        SoundManager.playSound("sfx/harddrop.wav");
         grid.addPiece(currentPiece, pieceX, pieceY);
         updateLinesCleared(isTSpin()); // Centralized update for lines cleared
         spawnNewPiece();
@@ -629,6 +648,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         //Track back to backs
         if(isTspin || currentLinesCleared == 4){
             backToBackCounter++;
+            SoundManager.playSound("sfx/clearquad.wav");
         }
         else if (currentLinesCleared > 0){
             backToBackCounter = 0;
@@ -925,7 +945,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             }
         }
 
-        if (!isCountingdown && currentState != GameState.MENU) {
+        if (!isCountingdown && currentState != GameState.MENU && currentState != GameState.SCORE_SCREEN && currentState != GameState.PAUSE && currentState != GameState.LOSE_SCREEN) {
             switch (e.getKeyCode()) {
                 case KeyEvent.VK_LEFT:
                     leftKeyPressed = true;

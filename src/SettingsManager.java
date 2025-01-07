@@ -8,13 +8,15 @@ public class SettingsManager {
     private int gridVisibility;
     private int ghostVisibility;
     private boolean actionTextOn;
+    SoundManager sound;
 
     public SettingsManager() {
+        sound = new SoundManager();
         // Default settings values
         this.arr = 1;
-        this.das = 5;
-        this.sdf = 50;
-        this.musicVolume = 75;
+        this.das = 4;
+        this.sdf = 1000;
+        this.musicVolume = 0;
         this.sfxVolume = 75;
         this.audioEnabled = true;
         this.gridVisibility = 50;
@@ -67,8 +69,13 @@ public class SettingsManager {
         return audioEnabled;
     }
 
-    public void setAudioEnabled(boolean audioEnabled) {
-        this.audioEnabled = audioEnabled;
+    public void setAudioEnabled(boolean on) {
+        if(on){
+            audioEnabled = true;
+        }
+        else{
+            audioEnabled = false;
+        }
     }
 
     public int getGridVisibility() {

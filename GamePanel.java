@@ -53,6 +53,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     Timer gameTimer;
     GameInterface gameInterface;
     SettingsManager settings;
+    ScoreManager scoreManager;
 
     private Queue<Tetromino> pieceQueue;
     private int pieceX = GRID_COLS / 2 - 2;
@@ -78,6 +79,9 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private int level;
     private double gravityFactor;
 
+    // Score system
+    private boolean isHighScore;
+
 
     // Enum for game states
     public enum GameState {
@@ -96,7 +100,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         menu = new MenuScreen(this);
         pauseScreen = new ExitScreen(this, "EXIT TO MAIN MENU?", "RESUME", "EXIT TO MAIN MENU", "PAUSE");
         loseScreen = new ExitScreen(this, "GAME OVER", "TRY AGAIN", "EXIT TO MAIN MENU", "LOSE");
-        scoreScreen = new ScoreScreen(this, result, currentState.toString());
+        scoreManager = new ScoreManager();
+        scoreScreen = new ScoreScreen(this, result, currentState.toString(), isHighScore);
         grid = new Grid();
         settings = new SettingsManager();
         gameTimer = new Timer();
@@ -268,6 +273,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         powerUpAvailable = false;
         powerUpUsed = false;
         slowTimeActive = false;
+
         // Repaint to update the display
         repaint();
     }
@@ -511,55 +517,59 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
-    private boolean powerUpAvailable = false;
     private boolean powerUpUsed = false;
-private boolean slowTimeActive = false;
-private long slowTimeStarted = 0;
-private static final long SLOW_TIME_DURATION = 3000; // 3 seconds in milliseconds
+    private boolean powerUpAvailable = false;
+    private boolean slowTimeActive = false;
+    private long slowTimeStarted = 0;
+    private static final long SLOW_TIME_DURATION = 3000; // 3 seconds in milliseconds
 
-private void gameCondition() {
-    if (grid.getLinesCleared() >= 40 && currentState == GameState.GAME_SPRINT) {
-        currentState = GameState.SCORE_SCREEN;
-        result = gameTimer.getFormattedTime();
-        gameTimer.stop();
-        remove(scoreScreen);
-        scoreScreen = new ScoreScreen(this, result, currentState.toString());
-        add(scoreScreen, BorderLayout.CENTER);
-        scoreScreen.setVisible(true);
-        revalidate();
-    }
-
-    if (gameTimer.getElapsedTime() >= 120000 && currentState == GameState.GAME_TIMETRIAL) {
-        currentState = GameState.SCORE_SCREEN;
-        result = String.format("%,d", score);
-        gameTimer.stop();
-        remove(scoreScreen);
-        scoreScreen = new ScoreScreen(this, result, currentState.toString());
-        add(scoreScreen, BorderLayout.CENTER);
-        scoreScreen.setVisible(true);
-        revalidate();
-    }
-
-    if (currentState == GameState.GAME_CHALLENGE) {
-        // Calculate difficulty based on time elapsed
-        long elapsedSeconds = gameTimer.getElapsedTime() / 1000;
-        gravityFactor = Math.min(120.919, 1 + (elapsedSeconds / 10.0)); // Increases by 0.1 every 1 second, caps at max speed
-
-        // Check for power-up availability
-        if (grid.getLinesCleared() > 0 && grid.getLinesCleared() % 10 == 0) {
-            powerUpAvailable = true;
+    private void gameCondition() {
+        if (grid.getLinesCleared() >= 2 && currentState == GameState.GAME_SPRINT) {
+            currentState = GameState.SCORE_SCREEN;
+            result = gameTimer.getFormattedTime();
+            gameTimer.stop();
+            remove(scoreScreen);
+            scoreScreen = new ScoreScreen(this, result, previousState.toString(), scoreManager.isHighScore(result, previousState.toString()));
+            add(scoreScreen, BorderLayout.CENTER);
+            scoreScreen.setVisible(true);
+            revalidate();
         }
 
-        // Handle slow time power-up
-        if (slowTimeActive) {
-            if (System.currentTimeMillis() - slowTimeStarted >= SLOW_TIME_DURATION) {
-                slowTimeActive = false;
-            } else {
-                gravityFactor *= 0.5; // Slow down pieces to half speed
+        if (gameTimer.getElapsedTime() >= 1000 && currentState == GameState.GAME_TIMETRIAL) {
+            currentState = GameState.SCORE_SCREEN;
+            result = String.format("%,d", score);
+            gameTimer.stop();
+            remove(scoreScreen);
+            scoreScreen = new ScoreScreen(this, result, previousState.toString(), scoreManager.isHighScore(result, previousState.toString()));
+            add(scoreScreen, BorderLayout.CENTER);
+            scoreScreen.setVisible(true);
+            revalidate();
+        }
+
+        if (currentState == GameState.GAME_CHALLENGE) {
+            // Calculate difficulty based on time elapsed
+            long elapsedSeconds = gameTimer.getElapsedTime() / 1000;
+            gravityFactor = Math.min(120.919, 1 + (elapsedSeconds / 10.0)); // Increases by 0.1 every 1 second, caps at max speed
+
+            // Check for power-up availability
+            if (grid.getLinesCleared() > 0 && grid.getLinesCleared() % 10 == 0) {
+                powerUpAvailable = true;
+            }
+
+            // Handle slow time power-up
+            if (slowTimeActive) {
+                if (System.currentTimeMillis() - slowTimeStarted >= SLOW_TIME_DURATION) {
+                    slowTimeActive = false;
+                } else {
+                    gravityFactor *= 0.5; // Slow down pieces to half speed
+                }
             }
         }
     }
-}
+
+    public void saveHighScore(String previousState, String result){
+        scoreManager.saveScore(previousState, result);
+    }
 
     // Add this method to handle power-up activation
     public void activateSlowTime() {
@@ -877,6 +887,13 @@ private void gameCondition() {
         }
 
         return occupiedCorners >= 3;
+    }
+
+    public void displayHighscores(){
+        System.out.println("Top 10 High Scores:");
+        for (int i = 1; i < 11; i++) {
+            System.out.println((i + 1) + ". " + scoreManager.getScore("GAME_SPRINT", i));
+        }
     }
 
     public void keyPressed(KeyEvent e) {

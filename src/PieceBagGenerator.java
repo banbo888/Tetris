@@ -16,6 +16,7 @@ public class PieceBagGenerator {
         Color.GREEN,   // S
         Color.BLUE,    // L
         Color.ORANGE   // J
+        
     };
 
     public PieceBagGenerator() {

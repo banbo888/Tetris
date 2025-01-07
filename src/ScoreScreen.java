@@ -52,7 +52,7 @@ public class ScoreScreen extends JPanel {
         usernameField = new JTextField();
         usernameField.setHorizontalAlignment(SwingConstants.CENTER);
         usernameField.setColumns(10); // Sets the width in terms of characters
-        usernameField.setFont(new Font("Arial", Font.PLAIN, 30));        
+        usernameField.setFont(new Font("Arial", Font.PLAIN, 25));        
         usernameField.setPreferredSize(new Dimension(200, 100));
 
         usernamePanel.add(usernameLabel, BorderLayout.NORTH);
@@ -77,13 +77,13 @@ public class ScoreScreen extends JPanel {
             gamePanel.returntoGame();
             gamePanel.restartGame();
             if(isHighScore){
-                gamePanel.saveHighScore(previousState, result);
+                gamePanel.saveHighScore(previousState, result, usernameField.getText());
             }
         });
         menuButton.addActionListener(e -> {
             gamePanel.returntoMenu();
             if(isHighScore){
-                gamePanel.saveHighScore(previousState, result);
+                gamePanel.saveHighScore(previousState, result, usernameField.getText());
             }
         });
 

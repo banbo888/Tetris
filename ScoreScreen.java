@@ -5,8 +5,10 @@ public class ScoreScreen extends JPanel {
     private JLabel timeLabel;
     private JButton againButton;
     private JButton menuButton;
+    private JTextField usernameField;
 
-    public ScoreScreen(GamePanel gamePanel, String result, String previousState) {
+    public ScoreScreen(GamePanel gamePanel, String result, String previousState, boolean isHighScore) {
+
         String title;
 
         setLayout(new GridBagLayout()); // Center everything
@@ -14,18 +16,17 @@ public class ScoreScreen extends JPanel {
 
         // Main container
         JPanel containerPanel = new JPanel();
-        containerPanel.setLayout(new BorderLayout());
+        containerPanel.setLayout(new GridLayout(4,1,0, 10));
         containerPanel.setBackground(Color.BLACK);
-        containerPanel.setPreferredSize(new Dimension(400, 200));
+        containerPanel.setPreferredSize(new Dimension(400, 250)); 
 
         // Title label
-        if(previousState == "GAME_SPRINT"){
+        if (previousState == "GAME_SPRINT") {
             title = "FINAL TIME";
-        }
-        else{
+        } else {
             title = "SCORE";
         }
-        
+
         JLabel titleLabel = new JLabel(title);
         titleLabel.setFont(new Font("Monospaced", Font.BOLD, 36));
         titleLabel.setForeground(Color.BLUE);
@@ -37,10 +38,32 @@ public class ScoreScreen extends JPanel {
         timeLabel.setForeground(Color.RED);
         timeLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
+        // Username input panel
+        JPanel usernamePanel = new JPanel();
+        usernamePanel.setLayout(new BorderLayout());
+        usernamePanel.setBackground(Color.BLACK);
+
+        JLabel usernameLabel = new JLabel("ENTER USERNAME:");
+        usernameLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        usernameLabel.setForeground(Color.WHITE);
+        usernameLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        usernameLabel.setBorder(BorderFactory.createEmptyBorder(5,0, 15,0));
+
+        usernameField = new JTextField();
+        usernameField.setHorizontalAlignment(SwingConstants.CENTER);
+        usernameField.setColumns(10); // Sets the width in terms of characters
+        usernameField.setFont(new Font("Arial", Font.PLAIN, 30));        
+        usernameField.setPreferredSize(new Dimension(200, 100));
+
+        usernamePanel.add(usernameLabel, BorderLayout.NORTH);
+        usernamePanel.add(usernameField, BorderLayout.CENTER);
+
         // Buttons panel
         JPanel buttonsPanel = new JPanel();
         buttonsPanel.setLayout(new GridLayout(1, 2, 20, 0)); // Horizontal layout with spacing
         buttonsPanel.setBackground(Color.BLACK);
+        usernameLabel.setBorder(BorderFactory.createEmptyBorder(0,0,0,0));
+
 
         // Create buttons
         againButton = createMenuButton("AGAIN");
@@ -53,16 +76,25 @@ public class ScoreScreen extends JPanel {
         againButton.addActionListener(e -> {
             gamePanel.returntoGame();
             gamePanel.restartGame();
+            if(isHighScore){
+                gamePanel.saveHighScore(previousState, result);
+            }
         });
         menuButton.addActionListener(e -> {
             gamePanel.returntoMenu();
+            if(isHighScore){
+                gamePanel.saveHighScore(previousState, result);
+            }
         });
-        
 
         // Add components to container panel
-        containerPanel.add(titleLabel, BorderLayout.NORTH);
-        containerPanel.add(timeLabel, BorderLayout.CENTER);
-        containerPanel.add(buttonsPanel, BorderLayout.SOUTH);
+        containerPanel.add(titleLabel);
+        containerPanel.add(timeLabel);
+        if(isHighScore){
+            containerPanel.add(usernamePanel);
+        }
+        containerPanel.add(buttonsPanel);
+
 
         // Add container to main panel
         add(containerPanel);
@@ -83,13 +115,11 @@ public class ScoreScreen extends JPanel {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 button.setBackground(Color.DARK_GRAY);
                 button.setForeground(Color.WHITE);
-                button.setFont(button.getFont().deriveFont(28f));
             }
 
             public void mouseExited(java.awt.event.MouseEvent evt) {
                 button.setBackground(Color.WHITE);
                 button.setForeground(Color.BLACK);
-                button.setFont(button.getFont().deriveFont(24f));
             }
 
             public void mouseReleased(java.awt.event.MouseEvent evt) {
@@ -106,6 +136,10 @@ public class ScoreScreen extends JPanel {
 
     public JButton getMenuButton() {
         return menuButton;
+    }
+
+    public String getUsername() {
+        return usernameField.getText();
     }
 
     public void resetButtonAppearance(JButton button) {

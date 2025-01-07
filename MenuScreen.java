@@ -3,7 +3,7 @@ import javax.swing.border.TitledBorder;
 
 import java.awt.*;
 
-public class Menu extends JPanel {
+public class MenuScreen extends JPanel {
 
     JButton playButton;
     JButton highScoresButton;
@@ -13,10 +13,10 @@ public class Menu extends JPanel {
     JPanel buttonsPanel;
     JLabel tetriLabel;
     JLabel xLabel;
-    Settings settings;
+    SettingsManager settings;
 
-    public Menu(GamePanel gamePanel) {
-        settings = new Settings();
+    public MenuScreen(GamePanel gamePanel) {
+        settings = new SettingsManager();
         setLayout(new BorderLayout());
         setBackground(Color.BLACK);
 
@@ -29,7 +29,7 @@ public class Menu extends JPanel {
         tetriLabel.setBorder(BorderFactory.createEmptyBorder(50, 0, 0,0));
 
         xLabel = new JLabel("X");
-        xLabel.setFont(new Font("Monospaced", Font.BOLD, 70));
+        xLabel.setFont(new Font("Monospaced", Font.BOLD, 80));
         xLabel.setForeground(Color.RED);
         xLabel.setBorder(BorderFactory.createEmptyBorder(50, 0, 0,0));
 
@@ -50,8 +50,7 @@ public class Menu extends JPanel {
 
         // Add Action Listeners
         playButton.addActionListener(e -> showGameModeMenu(gamePanel));
-
-        highScoresButton.addActionListener(e -> JOptionPane.showMessageDialog(null, "High Scores feature coming soon!"));
+        highScoresButton.addActionListener(e -> showHighscoresScreen(gamePanel));
         settingsButton.addActionListener(e -> showSettingsMenu(gamePanel));
         instructionsButton.addActionListener(e -> JOptionPane.showMessageDialog(null, "Instructions feature coming soon!"));
 
@@ -71,11 +70,16 @@ public class Menu extends JPanel {
 
     private JButton createMenuButton(String text) {
         JButton button = new JButton(text);
+        Dimension buttonSize = new Dimension(300, 70);  // Adjust these values as needed
+
         button.setFocusPainted(false);
         button.setFont(new Font("Arial", Font.BOLD, 24));
         button.setBackground(Color.WHITE);
         button.setForeground(Color.BLACK);
         button.setOpaque(true);
+        button.setPreferredSize(buttonSize);
+        button.setMinimumSize(buttonSize);
+        button.setMaximumSize(buttonSize);
         button.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
         
 
@@ -386,5 +390,132 @@ public class Menu extends JPanel {
         // Ensure layout is updated
         revalidate();
         repaint();
+    }
+
+    private void showHighscoresScreen(GamePanel gamePanel) {
+        removeAll();
+        setLayout(new BorderLayout());
+    
+        // Title Panel
+        titlePanel = new JPanel();
+        titlePanel.setBackground(Color.BLACK);
+        JLabel highscoresTitle = new JLabel("<html><span style='color:blue'>High</span><span style='color:red'>scores</span></html>");
+        highscoresTitle.setFont(new Font("Monospaced", Font.BOLD, 60));
+        highscoresTitle.setForeground(Color.WHITE);
+        highscoresTitle.setBorder(BorderFactory.createEmptyBorder(30, 0, 0, 0));
+        titlePanel.add(highscoresTitle);
+        add(titlePanel, BorderLayout.NORTH);
+    
+        // Mode Toggle Panel
+        JPanel togglePanel = new JPanel();
+        togglePanel.setBackground(Color.BLACK);
+        JButton blitzButton = createMenuButton("BLITZ");
+        JButton sprintButton = createMenuButton("SPRINT");
+        
+        // Use CardLayout for switching between score panels
+        CardLayout cardLayout = new CardLayout();
+        JPanel scoresContainer = new JPanel(cardLayout);
+        scoresContainer.setBackground(Color.BLACK);
+        
+        JPanel blitzScores = createScorePanel("BLITZ");
+        JPanel sprintScores = createScorePanel("SPRINT");
+        
+        scoresContainer.add(blitzScores, "BLITZ");
+        scoresContainer.add(sprintScores, "SPRINT");
+    
+        // Toggle button listeners
+        blitzButton.addActionListener(e -> {
+            cardLayout.show(scoresContainer, "BLITZ");
+            blitzButton.setBackground(new Color(100, 100, 255));
+            sprintButton.setBackground(Color.GRAY);
+        });
+        
+        sprintButton.addActionListener(e -> {
+            cardLayout.show(scoresContainer, "SPRINT");
+            sprintButton.setBackground(new Color(100, 100, 255));
+            blitzButton.setBackground(Color.GRAY);
+        });
+    
+        togglePanel.add(blitzButton);
+        togglePanel.add(sprintButton);
+        
+        // Main content panel
+        JPanel contentPanel = new JPanel(new BorderLayout());
+        contentPanel.setBackground(Color.BLACK);
+        contentPanel.add(togglePanel, BorderLayout.NORTH);
+        contentPanel.add(scoresContainer, BorderLayout.CENTER);
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(15, 100, 15, 100));
+        add(contentPanel, BorderLayout.CENTER);
+    
+        // Back button
+        JPanel backButtonPanel = new JPanel();
+        backButtonPanel.setBackground(Color.BLACK);
+        backButtonPanel.setLayout(new BorderLayout());
+        backButtonPanel.setBorder(BorderFactory.createEmptyBorder(10, 100, 30, 100));
+        
+        JButton backButton = createMenuButton("BACK");
+        backButton.addActionListener(e -> resetToMainMenu(gamePanel));
+        backButtonPanel.add(backButton, BorderLayout.CENTER);
+        add(backButtonPanel, BorderLayout.SOUTH);
+    
+        revalidate();
+        repaint();
+    }
+    
+    private JPanel createScorePanel(String mode) {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(Color.BLACK);
+        
+        // Create headers with 4 columns now
+        JPanel headerPanel = new JPanel(new GridLayout(1, 4));
+        headerPanel.setBackground(Color.BLACK);
+        
+        JLabel rankHeader = new JLabel("Rank");
+        JLabel usernameHeader = new JLabel("Username");  // New column
+        JLabel scoreHeader = new JLabel("Score");
+        JLabel dateHeader = new JLabel("Date");
+        
+        for (JLabel header : new JLabel[]{rankHeader, usernameHeader, scoreHeader, dateHeader}) {
+            header.setFont(new Font("Monospaced", Font.BOLD, 20));
+            header.setForeground(Color.WHITE);
+            header.setHorizontalAlignment(JLabel.CENTER);
+            headerPanel.add(header);
+        }
+        
+        panel.add(headerPanel);
+        panel.add(Box.createVerticalStrut(10));
+        
+        // Add 10 scores with usernames
+        String[][] dummyScores = {
+            {"1", "Player1", "1000", "2024-01-07"},
+            {"2", "Player2", "950", "2024-01-06"},
+            {"3", "Player3", "900", "2024-01-05"},
+            {"4", "Player4", "850", "2024-01-04"},
+            {"5", "Player5", "800", "2024-01-03"},
+            {"6", "Player6", "750", "2024-01-02"},
+            {"7", "Player7", "700", "2024-01-01"},
+            {"8", "Player8", "650", "2023-12-31"},
+            {"9", "Player9", "600", "2023-12-30"},
+            {"10", "Player10", "550", "2023-12-29"}
+        };
+        
+        for (String[] score : dummyScores) {
+            JPanel scoreRow = new JPanel(new GridLayout(1, 4));  // Changed to 4 columns
+            scoreRow.setBackground(Color.BLACK);
+            
+            for (String value : score) {
+                JLabel label = new JLabel(value);
+                label.setFont(new Font("Monospaced", Font.PLAIN, 16));
+                label.setForeground(Color.WHITE);
+                label.setHorizontalAlignment(JLabel.CENTER);
+                scoreRow.add(label);
+            }
+            
+            panel.add(scoreRow);
+            panel.add(Box.createVerticalStrut(5));
+        }
+        
+        return panel;
     }
 }

@@ -60,4 +60,13 @@ public class Timer {
 
         return String.format("%02d:%02d.%03d", minutes, seconds, milliseconds);
     }
+
+    // Change string time to long time
+    public static long parseTimeToMillis(String time) {
+        String[] parts = time.split(":");
+        int minutes = Integer.parseInt(parts[0]);
+        int seconds = Integer.parseInt(parts[1]);
+        int millis = Integer.parseInt(parts[2]);
+        return (minutes * 60 * 1000L) + (seconds * 1000L) + millis;
+    }
 }

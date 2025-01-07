@@ -265,7 +265,9 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
         // Store game mode
         previousState = currentState;
-
+        powerUpAvailable = false;
+        powerUpUsed = false;
+        slowTimeActive = false;
         // Repaint to update the display
         repaint();
     }
@@ -510,6 +512,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     }
 
     private boolean powerUpAvailable = false;
+    private boolean powerUpUsed = false;
 private boolean slowTimeActive = false;
 private long slowTimeStarted = 0;
 private static final long SLOW_TIME_DURATION = 3000; // 3 seconds in milliseconds
@@ -560,9 +563,11 @@ private void gameCondition() {
 
     // Add this method to handle power-up activation
     public void activateSlowTime() {
-        if (powerUpAvailable && !slowTimeActive && currentState == GameState.GAME_CHALLENGE) {
+        if (powerUpAvailable && !slowTimeActive && !powerUpUsed && currentState == GameState.GAME_CHALLENGE) {
+            gameInterface.triggerPowerUpText();
             slowTimeActive = true;
             powerUpAvailable = false;
+            powerUpUsed = true; // Mark the power-up as used
             slowTimeStarted = System.currentTimeMillis();
         }
     }

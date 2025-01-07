@@ -1,4 +1,3 @@
-
 import java.awt.*;
 
 public class Grid {
@@ -24,17 +23,33 @@ public class Grid {
         int[][] shape = piece.getShape();
         for (int row = 0; row < shape.length; row++) {
             for (int col = 0; col < shape[row].length; col++) {
-                if (shape[row][col] == 1) { 
-                    grid[y + row][x + col] = 1;
-                    colors[y + row][x + col] = piece.getColor(); // Use the piece's actual color
+                if (shape[row][col] == 1) {
+                    int newX = x + col;
+                    int newY = y + row;
+    
+                    // Only add the piece to the grid if it's within bounds or above the grid
+                    if (newX >= 0 && newX < COLS) {
+                        if (newY >= 0) {
+                            // If the piece is above or within the grid, add it to the grid
+                            grid[newY][newX] = 1;
+                            colors[newY][newX] = piece.getColor();
+                        } 
+                        // No else needed: we simply don't add it to the grid if it's above, but it's allowed to hover.
+                    }
                 }
             }
         }
-
+    
         piecesPlaced++;
-
     }
 
+    public void fillGrid(int row, int col, Color color) {
+        if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
+            grid[row][col] = 1; // Mark the cell as filled
+            colors[row][col] = color; // Set the color of the cell
+        }
+    }
+    
     public boolean checkCollision(Tetromino piece, int x, int y) {
         int[][] shape = piece.getShape();
         for (int row = 0; row < shape.length; row++) {
@@ -42,8 +57,14 @@ public class Grid {
                 if (shape[row][col] == 1) {
                     int newX = x + col;
                     int newY = y + row;
-
-                    if (newX < 0 || newX >= COLS || newY >= ROWS || grid[newY][newX] == 1) {
+    
+                    // Ensure newY is within grid bounds
+                    if (newX < 0 || newX >= COLS || newY >= ROWS) {
+                        return true;
+                    }
+    
+                    // Check for collision with occupied spaces
+                    if (newY >= 0 && grid[newY][newX] == 1) {
                         return true;
                     }
                 }
@@ -51,7 +72,6 @@ public class Grid {
         }
         return false;
     }
-
 
     public void clearFullLines() {
         for (int row = 0; row < ROWS; row++) {

@@ -567,8 +567,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
-    public void saveHighScore(String previousState, String result){
-        scoreManager.saveScore(previousState, result);
+    public void saveHighScore(String previousState, String result, String username){
+        scoreManager.saveScore(previousState, result, username);
     }
 
     // Add this method to handle power-up activation
@@ -892,7 +892,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     public void displayHighscores(){
         System.out.println("Top 10 High Scores:");
         for (int i = 1; i < 11; i++) {
-            System.out.println((i + 1) + ". " + scoreManager.getScore("GAME_SPRINT", i));
+            System.out.println((i + 1) + ". " + scoreManager.getEntryComponent("GAME_SPRINT", i, "score"));
         }
     }
 

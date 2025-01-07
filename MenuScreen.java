@@ -417,8 +417,8 @@ public class MenuScreen extends JPanel {
         JPanel scoresContainer = new JPanel(cardLayout);
         scoresContainer.setBackground(Color.BLACK);
         
-        JPanel blitzScores = createScorePanel("BLITZ");
-        JPanel sprintScores = createScorePanel("SPRINT");
+        JPanel blitzScores = createScorePanel("GAME_TIMETRIAL");
+        JPanel sprintScores = createScorePanel("GAME_SPRINT");
         
         scoresContainer.add(blitzScores, "BLITZ");
         scoresContainer.add(sprintScores, "SPRINT");
@@ -463,16 +463,17 @@ public class MenuScreen extends JPanel {
     }
     
     private JPanel createScorePanel(String mode) {
+        ScoreManager scoreManager = new ScoreManager();
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(Color.BLACK);
         
-        // Create headers with 4 columns now
+        // Create headers with 4 columns
         JPanel headerPanel = new JPanel(new GridLayout(1, 4));
         headerPanel.setBackground(Color.BLACK);
         
         JLabel rankHeader = new JLabel("Rank");
-        JLabel usernameHeader = new JLabel("Username");  // New column
+        JLabel usernameHeader = new JLabel("Username"); // New column
         JLabel scoreHeader = new JLabel("Score");
         JLabel dateHeader = new JLabel("Date");
         
@@ -486,22 +487,42 @@ public class MenuScreen extends JPanel {
         panel.add(headerPanel);
         panel.add(Box.createVerticalStrut(10));
         
-        // Add 10 scores with usernames
-        String[][] dummyScores = {
-            {"1", "Player1", "1000", "2024-01-07"},
-            {"2", "Player2", "950", "2024-01-06"},
-            {"3", "Player3", "900", "2024-01-05"},
-            {"4", "Player4", "850", "2024-01-04"},
-            {"5", "Player5", "800", "2024-01-03"},
-            {"6", "Player6", "750", "2024-01-02"},
-            {"7", "Player7", "700", "2024-01-01"},
-            {"8", "Player8", "650", "2023-12-31"},
-            {"9", "Player9", "600", "2023-12-30"},
-            {"10", "Player10", "550", "2023-12-29"}
-        };
+        // Initialize data arrays
+        String[][] sprintHighscoreData = new String[10][4];
+        String[][] timetrialHighscoreData = new String[10][4];
         
-        for (String[] score : dummyScores) {
-            JPanel scoreRow = new JPanel(new GridLayout(1, 4));  // Changed to 4 columns
+        // Fill arrays with data from ScoreManager
+        for (int i = 0; i < sprintHighscoreData.length; i++) {
+            for (int j = 0; j < sprintHighscoreData[i].length; j++) {
+                if (j == 0) {
+                    sprintHighscoreData[i][j] = String.valueOf(i + 1);
+                    timetrialHighscoreData[i][j] = String.valueOf(i + 1); // Rank
+                } else if (j == 1) {
+                    sprintHighscoreData[i][j] = scoreManager.getEntryComponent("GAME_SPRINT", i + 1, "username");
+                    timetrialHighscoreData[i][j] = scoreManager.getEntryComponent("GAME_TIMETRIAL", i + 1, "username");
+                } else if (j == 2) {
+                    sprintHighscoreData[i][j] = scoreManager.getEntryComponent("GAME_SPRINT", i + 1, "score");
+                    timetrialHighscoreData[i][j] = scoreManager.getEntryComponent("GAME_TIMETRIAL", i + 1, "score");
+                } else if (j == 3) {
+                    sprintHighscoreData[i][j] = scoreManager.getEntryComponent("GAME_SPRINT", i + 1, "date");
+                    timetrialHighscoreData[i][j] = scoreManager.getEntryComponent("GAME_TIMETRIAL", i + 1, "date");
+                }
+            }
+        }
+        
+        // Select the appropriate dataset based on the mode
+        String[][] selectedData;
+        if ("GAME_SPRINT".equals(mode)) {
+            selectedData = sprintHighscoreData;
+        } else if ("GAME_TIMETRIAL".equals(mode)) {
+            selectedData = timetrialHighscoreData;
+        } else {
+            throw new IllegalArgumentException("Invalid game mode: " + mode);
+        }
+        
+        // Add the rows to the panel
+        for (String[] score : selectedData) {
+            JPanel scoreRow = new JPanel(new GridLayout(1, 4)); // 4 columns
             scoreRow.setBackground(Color.BLACK);
             
             for (String value : score) {
@@ -517,5 +538,5 @@ public class MenuScreen extends JPanel {
         }
         
         return panel;
-    }
+    }    
 }

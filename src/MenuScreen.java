@@ -17,6 +17,7 @@ public class MenuScreen extends JPanel {
 
     public MenuScreen(GamePanel gamePanel) {
         settings = new SettingsManager();
+        
         setLayout(new BorderLayout());
         setBackground(Color.BLACK);
 
@@ -192,14 +193,26 @@ public class MenuScreen extends JPanel {
         handlingPanel.add(createSettingRow("SDF (5-1000)", sdfField));
         settingsPanel.add(handlingPanel);
     
-        // Audio Settings (keeping sliders for these)
+        // Audio Settings
         JPanel audioPanel = createSettingSection("Audio");
         JSlider musicSlider = createSlider("Music", 0, 100, settings.getMusicVolume(), "Music Volume");
         JSlider sfxSlider = createSlider("SFX", 0, 100, settings.getSfxVolume(), "Sound Effects Volume");
         JCheckBox audioToggle = new JCheckBox("On/Off");
         audioToggle.setForeground(Color.WHITE);
         audioToggle.setBackground(Color.BLACK);
-        audioToggle.setSelected(settings.isAudioEnabled());
+        audioToggle.setSelected(settings.isAudioEnabled());;
+        
+        // Single action listener that updates settings immediately
+        audioToggle.addActionListener(e -> {
+            settings.setAudioEnabled(audioToggle.isSelected());
+            updateGamePanelSettings(gamePanel);
+        });
+
+        musicSlider.addChangeListener(e -> {
+            settings.setMusicVolume(musicSlider.getValue());
+            updateGamePanelSettings(gamePanel);
+        });
+
         audioPanel.add(createSettingRow("Music", musicSlider));
         audioPanel.add(createSettingRow("SFX  ", sfxSlider));
         audioPanel.add(createSettingRow("Audio:", audioToggle));

@@ -17,6 +17,12 @@ public class GameInterface {
     // Add new fields
     private boolean powerUpAvailable = false;
     private String powerUpText = "SLOW TIME READY!";
+    private boolean showPowerUpText = false;
+    private long powerUpTextStartTime;
+    private static final long POWER_UP_TEXT_DURATION = 3000; // 3 seconds
+    private String powerUpActiveText = "SLOW MODE ACTIVATED!";
+    private float powerUpFadeAlpha = 1.0f;
+    private Timer powerUpFadeTimer;
 
     //Action text
     private String actionText = "";
@@ -44,7 +50,26 @@ public class GameInterface {
             }
         });
         fadeTimer.setRepeats(true);
+
+        // Add power-up fade timer
+        powerUpFadeTimer = new Timer(FADE_INTERVAL, e -> {
+            powerUpFadeAlpha -= 0.02f;
+            if (powerUpFadeAlpha <= 0) {
+                powerUpFadeAlpha = 0;
+                showPowerUpText = false;
+                ((Timer) e.getSource()).stop();
+            }
+        });
+        powerUpFadeTimer.setRepeats(true);
         
+    }
+
+    public void triggerPowerUpText() {
+        showPowerUpText = true;
+        powerUpTextStartTime = System.currentTimeMillis();
+        powerUpFadeAlpha = 1.0f;
+        powerUpFadeTimer.restart();
+        powerUpAvailable = false;
     }
 
     public void updateState(Queue<Tetromino> pieceQueue, Tetromino heldPiece, Tetromino currentPiece, int pieceX, int pieceY, String gameState, boolean isCountingDown) {
@@ -127,7 +152,7 @@ public class GameInterface {
         // Draw the milliseconds part
         g.setFont(new Font("SansSerif", Font.PLAIN, 25)); // Smaller font for milliseconds
         g.drawString(milliseconds, posX + mainTimeWidth, posY); // Offset by the width of main time
-        if (gameState == "GAME_CHALLENGE" && powerUpAvailable) {
+        if (gameState.equals("GAME_CHALLENGE") && powerUpAvailable) {
             g.setFont(new Font("SansSerif", Font.BOLD, 25));
             g.setColor(Color.GREEN);
             g.drawString(powerUpText, posX, posY - 90);
@@ -307,11 +332,12 @@ public class GameInterface {
         }
     }
 
+    // Modify the drawActionText method
     public void drawActionText(Graphics g) {
         int posX = 100;
         int posY = 615;
     
-        // Only draw if fadeAlpha is greater than 0
+        // Draw regular action text
         if (fadeAlpha > 0 && actionText != null && !actionText.isEmpty()) {
             Graphics2D g2d = (Graphics2D) g.create();
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, fadeAlpha));
@@ -330,9 +356,26 @@ public class GameInterface {
             g2d.setFont(new Font("SansSerif", Font.BOLD, 30));
             g2d.setColor(Color.YELLOW);
             g2d.drawString(comboString, posX, posY - 270);
-
-            
             g2d.dispose();
+        }
+
+        // Draw power-up activation text
+        if (showPowerUpText) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, powerUpFadeAlpha));
+            g2d.setFont(new Font("SansSerif", Font.BOLD, 45));
+            g2d.setColor(new Color(0, 255, 255)); // Cyan color
+            FontMetrics fm = g2d.getFontMetrics();
+            int textWidth = fm.stringWidth(powerUpActiveText);
+            g2d.drawString(powerUpActiveText, 
+                GRID_OFFSET_X + (GamePanel.GAME_WIDTH - textWidth) / 2,
+                GamePanel.GAME_HEIGHT / 2);
+            g2d.dispose();
+
+            // Check if power-up duration is over
+            if (System.currentTimeMillis() - powerUpTextStartTime >= POWER_UP_TEXT_DURATION) {
+                showPowerUpText = false;
+            }
         }
     }
 }

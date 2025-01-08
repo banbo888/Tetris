@@ -145,7 +145,9 @@ public class Tetromino {
     public int getIndex() {
         return index;
     }
-
+    public int[][] getCurrentRotation() {
+        return rotations[rotation];
+    }
     // Draw the tetromino
     public void draw(Graphics g, int x, int y) {
         int[][] shape = getShape();

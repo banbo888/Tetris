@@ -82,7 +82,12 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     // Score system
     private boolean isHighScore;
-
+    private int powerUpLineCount = 0; // Track lines cleared for power-up
+    private boolean powerUpUsed = false;
+    private boolean powerUpAvailable = false;
+    private boolean slowTimeActive = false;
+    private long slowTimeStarted = 0;
+    private static final long SLOW_TIME_DURATION = 3000; // 3 seconds in milliseconds
 
     // Enum for game states
     public enum GameState {
@@ -535,11 +540,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
-    private boolean powerUpUsed = false;
-    private boolean powerUpAvailable = false;
-    private boolean slowTimeActive = false;
-    private long slowTimeStarted = 0;
-    private static final long SLOW_TIME_DURATION = 3000; // 3 seconds in milliseconds
+    
 
     private void gameCondition() {
         if (grid.getLinesCleared() >= 40 && currentState == GameState.GAME_SPRINT) {
@@ -569,11 +570,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             long elapsedSeconds = gameTimer.getElapsedTime() / 1000;
             gravityFactor = Math.min(120.919, 1 + (elapsedSeconds / 10.0)); // Increases by 0.1 every 1 second, caps at max speed
 
-            // Check for power-up availability
-            if (grid.getLinesCleared() > 0 && grid.getLinesCleared() % 10 == 0) {
-                powerUpAvailable = true;
-            }
-
             // Handle slow time power-up
             if (slowTimeActive) {
                 if (System.currentTimeMillis() - slowTimeStarted >= SLOW_TIME_DURATION) {
@@ -591,11 +587,11 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     // Add this method to handle power-up activation
     public void activateSlowTime() {
-        if (powerUpAvailable && !slowTimeActive && !powerUpUsed && currentState == GameState.GAME_CHALLENGE) {
+        if (powerUpAvailable && !slowTimeActive && currentState == GameState.GAME_CHALLENGE) {
             gameInterface.triggerPowerUpText();
             slowTimeActive = true;
-            powerUpAvailable = false;
-            powerUpUsed = true; // Mark the power-up as used
+            powerUpAvailable = false; // This will hide the "SLOW TIME READY!" text
+            powerUpLineCount = 0; // Reset line count for next power-up
             slowTimeStarted = System.currentTimeMillis();
         }
     }
@@ -645,6 +641,12 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         controlGravity(); // Track levels
         currentLinesCleared = grid.getLinesCleared() - previousLinesCleared;
 
+        // Update power-up line count
+        powerUpLineCount += currentLinesCleared;
+        if (powerUpLineCount >= 10) {
+            powerUpAvailable = true;
+        }
+
         //Track back to backs
         if(isTspin || currentLinesCleared == 4){
             backToBackCounter++;
@@ -667,7 +669,13 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
         // Trigger action text
         if(currentLinesCleared > 0){ // Only trigger if lines were cleared
-            gameInterface.triggerActionText(currentLinesCleared, isTspin, isGridEmpty(), backToBackCounter, comboCounter);
+            if (grid.wasLastClearFromBomb()) {
+                gameInterface.triggerBombText();
+                SoundManager.playSound("sfx/explosion.wav");
+            }
+            else{
+                gameInterface.triggerActionText(currentLinesCleared, isTspin, isGridEmpty(), backToBackCounter, comboCounter);
+            }
         }
     }
 

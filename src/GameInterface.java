@@ -378,4 +378,9 @@ public class GameInterface {
             }
         }
     }
+    public void triggerBombText() {
+        actionText = "KABOOM!";
+        fadeAlpha = 1.0f;
+        fadeTimer.restart();
+    }
 }

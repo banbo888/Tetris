@@ -1,3 +1,8 @@
+//ICS Summative - Tetris by Richard Xiong & Eric Ma
+//Beta Program Submission
+//2025-01-09
+//GamePanel Class - Manages all of the logic in the game (i.e. the loop, the thread, as well as general mechanisms of tetris like the menu, game phase, etc.)
+
 import java.awt.*;
 import java.awt.event.*;
 import java.util.LinkedList;

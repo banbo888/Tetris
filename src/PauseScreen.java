@@ -1,3 +1,8 @@
+//ICS Summative - Tetris by Richard Xiong & Eric Ma
+//Beta Program Submission
+//2025-01-09
+//PauseScreen Class - Displays a pause menu with options to resume the game or return to the main menu, providing a user interface for pausing and resuming gameplay.
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -53,6 +58,7 @@ public class PauseScreen extends JPanel {
         add(containerPanel);
     }
 
+    // Method to create button
     private JButton createMenuButton(String text) {
         JButton button;
         
@@ -86,6 +92,7 @@ public class PauseScreen extends JPanel {
         return button;
     }
 
+    // Get Resume and MainMenu buttons for use in GamePanel
     public JButton getResumeButton() {
         return resumeBotton;
     }
@@ -94,6 +101,7 @@ public class PauseScreen extends JPanel {
         return mainMenuButton;
     }
 
+    // Reset button appearance
     public void resetButtonAppearance(JButton button) {
         button.setBackground(new Color(255, 255, 255, 200));
         button.setForeground(Color.BLACK);

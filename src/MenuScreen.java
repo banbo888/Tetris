@@ -14,6 +14,7 @@ public class MenuScreen extends JPanel {
     JLabel tetriLabel;
     JLabel xLabel;
     SettingsManager settings;
+    int arr, das, sdf;
 
     public MenuScreen(GamePanel gamePanel) {
         settings = new SettingsManager();
@@ -90,6 +91,7 @@ public class MenuScreen extends JPanel {
                 button.setBackground(Color.DARK_GRAY);
                 button.setForeground(Color.WHITE);
                 button.setFont(button.getFont().deriveFont(28f));
+                SoundManager.playSound("sfx/menuhover.wav");
             }
 
             public void mouseExited(java.awt.event.MouseEvent evt) {
@@ -103,17 +105,24 @@ public class MenuScreen extends JPanel {
             }
         });
 
+        button.addActionListener(e -> SoundManager.playSound("sfx/menuhit1.wav"));
+
         return button;
     }
 
     private void showGameModeMenu(GamePanel gamePanel) {
+        JLabel modeTitle;
+        JPanel modeButtonsPanel;
+        JButton sprintModeButton, timeTrialModeButton, practiceModeButton, challengeModeButton, backButton;
+        JPanel backButtonPanel;
+
         removeAll(); // Remove existing components
         setLayout(new BorderLayout());
 
         // Title Panel
         titlePanel = new JPanel();
         titlePanel.setBackground(Color.BLACK);
-        JLabel modeTitle = new JLabel("<html><span style='color:blue'>Game </span><span style='color:red'>Mode</span></html>");
+        modeTitle = new JLabel("<html><span style='color:blue'>Game </span><span style='color:red'>Mode</span></html>");
         modeTitle.setFont(new Font("Monospaced", Font.BOLD, 60));
         modeTitle.setForeground(Color.WHITE);
         
@@ -124,22 +133,41 @@ public class MenuScreen extends JPanel {
         add(titlePanel, BorderLayout.NORTH);
 
         // Buttons Panel for Game Modes
-        JPanel modeButtonsPanel = new JPanel();
+        modeButtonsPanel = new JPanel();
         modeButtonsPanel.setBackground(Color.BLACK);
         modeButtonsPanel.setLayout(new GridLayout(2, 2, 10, 10)); // 2 rows, 2 columns
 
-        JButton sprintModeButton = createMenuButton("SPRINT");
-        JButton timeTrialModeButton = createMenuButton("TIME TRIAL");
-        JButton practiceModeButton = createMenuButton("PRACTICE");
-        JButton challengeModeButton = createMenuButton("CHALLENGE");
-        JButton backButton = createMenuButton("BACK");
+        sprintModeButton = createMenuButton("SPRINT");
+        timeTrialModeButton = createMenuButton("TIME TRIAL");
+        practiceModeButton = createMenuButton("PRACTICE");
+        challengeModeButton = createMenuButton("CHALLENGE");
+        backButton = createMenuButton("BACK");
 
         // Add action listeners for game modes
-        sprintModeButton.addActionListener(e -> gamePanel.startGame(1));
-        timeTrialModeButton.addActionListener(e -> gamePanel.startGame(2));
-        practiceModeButton.addActionListener(e -> gamePanel.startGame(3));
-        challengeModeButton.addActionListener(e -> gamePanel.startGame(4));
-        backButton.addActionListener(e -> resetToMainMenu(gamePanel));
+        sprintModeButton.addActionListener(e -> {
+            gamePanel.startGame(1);
+            SoundManager.playSound("sfx/menuconfirm.wav");
+            SoundManager.playMusic("music/sprint.wav");
+        });
+        timeTrialModeButton.addActionListener(e -> {
+            gamePanel.startGame(2);
+            SoundManager.playSound("sfx/menuconfirm.wav");
+            SoundManager.playMusic("music/blitz.wav");
+        });
+        practiceModeButton.addActionListener(e -> {
+            gamePanel.startGame(3);
+            SoundManager.playSound("sfx/menuconfirm.wav");
+            SoundManager.playMusic("music/practice.wav");
+        });
+        challengeModeButton.addActionListener(e -> {
+            gamePanel.startGame(4);
+            SoundManager.playSound("sfx/menuconfirm.wav");
+            SoundManager.playMusic("music/challenge.wav");
+        });
+        backButton.addActionListener(e -> {
+            resetToMainMenu(gamePanel);
+            SoundManager.playSound("sfx/menuback.wav");
+        });
 
         modeButtonsPanel.add(sprintModeButton);
         modeButtonsPanel.add(timeTrialModeButton);
@@ -151,7 +179,7 @@ public class MenuScreen extends JPanel {
         add(modeButtonsPanel, BorderLayout.CENTER);
 
         // Back button panel
-        JPanel backButtonPanel = new JPanel();
+        backButtonPanel = new JPanel();
         backButtonPanel.setBackground(Color.BLACK);
         backButtonPanel.setLayout(new BorderLayout());
         backButtonPanel.setBorder(BorderFactory.createEmptyBorder(10, 100, 50, 100));
@@ -163,13 +191,20 @@ public class MenuScreen extends JPanel {
     }
 
     private void showSettingsMenu(GamePanel gamePanel) {
+        JLabel settingsTitle;
+        JPanel settingsPanel, handlingPanel, audioPanel, videoPanel, backButtonPanel;
+        JTextField arrField, dasField, sdfField;
+        JSlider musicSlider, sfxSlider, gridSlider, ghostSlider;
+        JCheckBox audioToggle, actionTextToggle;
+        JButton backButton;
+
         removeAll();
         setLayout(new BorderLayout());
     
         // Title Panel
         titlePanel = new JPanel();
         titlePanel.setBackground(Color.BLACK);
-        JLabel settingsTitle = new JLabel("SETTINGS");
+        settingsTitle = new JLabel("SETTINGS");
         settingsTitle.setFont(new Font("Monospaced", Font.BOLD, 40));
         settingsTitle.setForeground(Color.WHITE);
         settingsTitle.setBorder(BorderFactory.createEmptyBorder(30, 0, 0, 0));
@@ -177,16 +212,16 @@ public class MenuScreen extends JPanel {
         add(titlePanel, BorderLayout.NORTH);
     
         // Main Settings Panel
-        JPanel settingsPanel = new JPanel();
+        settingsPanel = new JPanel();
         settingsPanel.setBackground(Color.BLACK);
         settingsPanel.setLayout(new BoxLayout(settingsPanel, BoxLayout.Y_AXIS));
         settingsPanel.setBorder(BorderFactory.createEmptyBorder(10, 50, 10, 50));
     
         // Handling Settings
-        JPanel handlingPanel = createSettingSection("Handling");
-        JTextField arrField = createNumberField(settings.getArr(), "Automatic Repeat Rate: the speed at which tetrominoes move when holding down movement keys (in frames)", 0, 5);
-        JTextField dasField = createNumberField(settings.getDas(), "Delayed Auto Shift: the delay before tetrominoes start moving when holding down movement keys (in frames)", 1, 20);
-        JTextField sdfField = createNumberField(settings.getSdf(), "Soft Drop Factor: the speed at which tetrominoes fall when soft dropping", 5, 100);
+        handlingPanel = createSettingSection("Handling");
+        arrField = createNumberField(settings.getArr(), "Automatic Repeat Rate: the speed at which tetrominoes move when holding down movement keys (in frames)", 0, 5);
+        dasField = createNumberField(settings.getDas(), "Delayed Auto Shift: the delay before tetrominoes start moving when holding down movement keys (in frames)", 1, 20);
+        sdfField = createNumberField(settings.getSdf(), "Soft Drop Factor: the speed at which tetrominoes fall when soft dropping", 5, 100);
         
         handlingPanel.add(createSettingRow("ARR (1-5)   ", arrField));
         handlingPanel.add(createSettingRow("DAS (1-20)  ", dasField));
@@ -194,10 +229,10 @@ public class MenuScreen extends JPanel {
         settingsPanel.add(handlingPanel);
     
         // Audio Settings
-        JPanel audioPanel = createSettingSection("Audio");
-        JSlider musicSlider = createSlider("Music", 0, 100, settings.getMusicVolume(), "Music Volume");
-        JSlider sfxSlider = createSlider("SFX", 0, 100, settings.getSfxVolume(), "Sound Effects Volume");
-        JCheckBox audioToggle = new JCheckBox("On/Off");
+        audioPanel = createSettingSection("Audio");
+        musicSlider = createSlider("Music", 0, 100, settings.getMusicVolume(), "Music Volume");
+        sfxSlider = createSlider("SFX", 0, 100, settings.getSfxVolume(), "Sound Effects Volume");
+        audioToggle = new JCheckBox("On/Off");
         audioToggle.setForeground(Color.WHITE);
         audioToggle.setBackground(Color.BLACK);
         audioToggle.setSelected(settings.isAudioEnabled());;
@@ -219,10 +254,10 @@ public class MenuScreen extends JPanel {
         settingsPanel.add(audioPanel);
     
         // Video Settings (keeping sliders for these)
-        JPanel videoPanel = createSettingSection("Video");
-        JSlider gridSlider = createSlider("Grid Visibility", 0, 100, settings.getGridVisibility(), "Visibility of the game grid");
-        JSlider ghostSlider = createSlider("Ghost Piece Visibility", 0, 100, settings.getGhostVisibility(), "Opacity of the ghost piece");
-        JCheckBox actionTextToggle = new JCheckBox("On/Off");
+        videoPanel = createSettingSection("Video");
+        gridSlider = createSlider("Grid Visibility", 0, 100, settings.getGridVisibility(), "Visibility of the game grid");
+        ghostSlider = createSlider("Ghost Piece Visibility", 0, 100, settings.getGhostVisibility(), "Opacity of the ghost piece");
+        actionTextToggle = new JCheckBox("On/Off");
         actionTextToggle.setForeground(Color.WHITE);
         actionTextToggle.setBackground(Color.BLACK);
         actionTextToggle.setSelected(settings.isActionTextOn());
@@ -234,39 +269,39 @@ public class MenuScreen extends JPanel {
         add(settingsPanel, BorderLayout.CENTER);
     
         // Back button
-        JPanel backButtonPanel = new JPanel();
+        backButtonPanel = new JPanel();
         backButtonPanel.setBackground(Color.BLACK);
         backButtonPanel.setLayout(new BorderLayout());
         backButtonPanel.setBorder(BorderFactory.createEmptyBorder(10, 50, 30, 50)); 
-        JButton backButton = createMenuButton("SAVE & GO BACK");
+        backButton = createMenuButton("SAVE & GO BACK");
         backButton.addActionListener(e -> {
             updateGamePanelSettings(gamePanel); // Update settings before going back
             resetToMainMenu(gamePanel);
 
             //Save settings when pressed:
-            try {
-                int value = Integer.parseInt(arrField.getText());
-                value = Math.max(1, Math.min(5, value));
-                settings.setArr(value);
-                arrField.setText(String.valueOf(value));
+            try {                
+                arr = Integer.parseInt(arrField.getText());
+                arr = Math.max(1, Math.min(5, arr));
+                settings.setArr(arr);
+                arrField.setText(String.valueOf(arr));
             } catch (NumberFormatException ex) {
                 arrField.setText(String.valueOf(settings.getArr()));
             }
 
             try {
-                int value = Integer.parseInt(dasField.getText());
-                value = Math.max(1, Math.min(20, value));
-                settings.setDas(value);
-                dasField.setText(String.valueOf(value));
+                das = Integer.parseInt(dasField.getText());
+                das = Math.max(1, Math.min(20, das));
+                settings.setDas(das);
+                dasField.setText(String.valueOf(das));
             } catch (NumberFormatException ex) {
                 dasField.setText(String.valueOf(settings.getDas()));
             }
 
             try {
-                int value = Integer.parseInt(sdfField.getText());
-                value = Math.max(5, Math.min(1000, value));
-                settings.setSdf(value);
-                sdfField.setText(String.valueOf(value));
+                sdf = Integer.parseInt(sdfField.getText());
+                sdf = Math.max(5, Math.min(1000, sdf));
+                settings.setSdf(sdf);
+                sdfField.setText(String.valueOf(sdf));
             } catch (NumberFormatException ex) {
                 sdfField.setText(String.valueOf(settings.getSdf()));
             }
@@ -291,7 +326,9 @@ public class MenuScreen extends JPanel {
     
     // Helper method to create a number input field with validation
     private JTextField createNumberField(int defaultValue, String tooltip, int min, int max) {
-        JTextField field = new JTextField(String.valueOf(defaultValue), 5);
+        JTextField field;
+        
+        field = new JTextField(String.valueOf(defaultValue), 5);
         field.setToolTipText(tooltip);
         field.setBackground(Color.WHITE);
         field.setForeground(Color.BLACK);
@@ -303,7 +340,9 @@ public class MenuScreen extends JPanel {
     
     // Helper method to create slider
     private JSlider createSlider(String name, int min, int max, int defaultValue, String desc) {
-        JSlider slider = new JSlider(JSlider.HORIZONTAL, min, max, defaultValue);
+        JSlider 
+        
+        slider = new JSlider(JSlider.HORIZONTAL, min, max, defaultValue);
         slider.setToolTipText(desc);
         slider.setBackground(Color.BLACK);
         slider.setForeground(Color.WHITE);
@@ -320,6 +359,7 @@ public class MenuScreen extends JPanel {
     // Helper method to create a section panel
     private JPanel createSettingSection(String title) {
         JPanel sectionPanel = new JPanel();
+
         sectionPanel.setLayout(new BoxLayout(sectionPanel, BoxLayout.Y_AXIS));
         sectionPanel.setBackground(Color.BLACK);
         sectionPanel.setBorder(BorderFactory.createTitledBorder(
@@ -336,9 +376,10 @@ public class MenuScreen extends JPanel {
     // Helper method to create a row for a setting
     private JPanel createSettingRow(String label, JComponent control) {
         JPanel row = new JPanel();
+        JLabel nameLabel = new JLabel(label);
+        
         row.setLayout(new BorderLayout(5, 0)); 
         row.setBackground(Color.BLACK);
-        JLabel nameLabel = new JLabel(label);
         nameLabel.setForeground(Color.WHITE);
         nameLabel.setFont(new Font("Monospaced", Font.PLAIN, 14));
         row.add(nameLabel, BorderLayout.WEST);
@@ -406,13 +447,19 @@ public class MenuScreen extends JPanel {
     }
 
     private void showHighscoresScreen(GamePanel gamePanel) {
+        JLabel highscoresTitle;
+        JPanel togglePanel, scoresContainer, timetrialScores, sprintScores, displayScoresPanel, backButtonPanel;
+        JButton blitzButton, sprintButton, backButton;
+        CardLayout cardLayout = new CardLayout();
+
+
         removeAll();
         setLayout(new BorderLayout());
     
         // Title Panel
         titlePanel = new JPanel();
         titlePanel.setBackground(Color.BLACK);
-        JLabel highscoresTitle = new JLabel("<html><span style='color:blue'>High</span><span style='color:red'>scores</span></html>");
+        highscoresTitle = new JLabel("<html><span style='color:blue'>High</span><span style='color:red'>scores</span></html>");
         highscoresTitle.setFont(new Font("Monospaced", Font.BOLD, 60));
         highscoresTitle.setForeground(Color.WHITE);
         highscoresTitle.setBorder(BorderFactory.createEmptyBorder(30, 0, 0, 0));
@@ -420,25 +467,24 @@ public class MenuScreen extends JPanel {
         add(titlePanel, BorderLayout.NORTH);
     
         // Mode Toggle Panel
-        JPanel togglePanel = new JPanel();
+        togglePanel = new JPanel();
         togglePanel.setBackground(Color.BLACK);
-        JButton blitzButton = createMenuButton("BLITZ");
-        JButton sprintButton = createMenuButton("SPRINT");
+        blitzButton = createMenuButton("TIME TRIAL");
+        sprintButton = createMenuButton("SPRINT");
         
         // Use CardLayout for switching between score panels
-        CardLayout cardLayout = new CardLayout();
-        JPanel scoresContainer = new JPanel(cardLayout);
+        scoresContainer = new JPanel(cardLayout);
         scoresContainer.setBackground(Color.BLACK);
         
-        JPanel blitzScores = createScorePanel("GAME_TIMETRIAL");
-        JPanel sprintScores = createScorePanel("GAME_SPRINT");
+        timetrialScores = createScorePanel("GAME_TIMETRIAL");
+        sprintScores = createScorePanel("GAME_SPRINT");
         
-        scoresContainer.add(blitzScores, "BLITZ");
+        scoresContainer.add(timetrialScores, "TIME TRIAL");
         scoresContainer.add(sprintScores, "SPRINT");
     
         // Toggle button listeners
         blitzButton.addActionListener(e -> {
-            cardLayout.show(scoresContainer, "BLITZ");
+            cardLayout.show(scoresContainer, "TIME TRIAl");
             blitzButton.setBackground(new Color(100, 100, 255));
             sprintButton.setBackground(Color.GRAY);
         });
@@ -453,20 +499,20 @@ public class MenuScreen extends JPanel {
         togglePanel.add(sprintButton);
         
         // Main content panel
-        JPanel contentPanel = new JPanel(new BorderLayout());
-        contentPanel.setBackground(Color.BLACK);
-        contentPanel.add(togglePanel, BorderLayout.NORTH);
-        contentPanel.add(scoresContainer, BorderLayout.CENTER);
-        contentPanel.setBorder(BorderFactory.createEmptyBorder(15, 100, 15, 100));
-        add(contentPanel, BorderLayout.CENTER);
+        displayScoresPanel = new JPanel(new BorderLayout());
+        displayScoresPanel.setBackground(Color.BLACK);
+        displayScoresPanel.add(togglePanel, BorderLayout.NORTH);
+        displayScoresPanel.add(scoresContainer, BorderLayout.CENTER);
+        displayScoresPanel.setBorder(BorderFactory.createEmptyBorder(15, 100, 15, 100));
+        add(displayScoresPanel, BorderLayout.CENTER);
     
         // Back button
-        JPanel backButtonPanel = new JPanel();
+        backButtonPanel = new JPanel();
         backButtonPanel.setBackground(Color.BLACK);
         backButtonPanel.setLayout(new BorderLayout());
         backButtonPanel.setBorder(BorderFactory.createEmptyBorder(10, 100, 30, 100));
         
-        JButton backButton = createMenuButton("BACK");
+        backButton = createMenuButton("BACK");
         backButton.addActionListener(e -> resetToMainMenu(gamePanel));
         backButtonPanel.add(backButton, BorderLayout.CENTER);
         add(backButtonPanel, BorderLayout.SOUTH);
@@ -476,35 +522,54 @@ public class MenuScreen extends JPanel {
     }
     
     private JPanel createScorePanel(String mode) {
+        // Variable declaration
         ScoreManager scoreManager = new ScoreManager();
-        JPanel panel = new JPanel();
+        JPanel panel, headerPanel, scoreRow;
+        JLabel rankHeader, usernameHeader, scoreHeader, dateHeader, scoreLabel;
+
+        // Score data arrays
+        String[][] sprintHighscoreData = new String[10][4];
+        String[][] timetrialHighscoreData = new String[10][4];
+        String[][] selectedData;
+        String[] score;
+        
+        panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(Color.BLACK);
         
         // Create headers with 4 columns
-        JPanel headerPanel = new JPanel(new GridLayout(1, 4));
+        headerPanel = new JPanel(new GridLayout(1, 4));
         headerPanel.setBackground(Color.BLACK);
         
-        JLabel rankHeader = new JLabel("Rank");
-        JLabel usernameHeader = new JLabel("Username"); // New column
-        JLabel scoreHeader = new JLabel("Score");
-        JLabel dateHeader = new JLabel("Date");
+        rankHeader = new JLabel("Rank");
+        usernameHeader = new JLabel("Username"); // New column
+        scoreHeader = new JLabel("Score");
+        dateHeader = new JLabel("Date");
         
-        for (JLabel header : new JLabel[]{rankHeader, usernameHeader, scoreHeader, dateHeader}) {
-            header.setFont(new Font("Monospaced", Font.BOLD, 20));
-            header.setForeground(Color.WHITE);
-            header.setHorizontalAlignment(JLabel.CENTER);
-            headerPanel.add(header);
-        }
+        rankHeader.setFont(new Font("Monospaced", Font.BOLD, 20));
+        rankHeader.setForeground(Color.WHITE);
+        rankHeader.setHorizontalAlignment(JLabel.CENTER);
+        headerPanel.add(rankHeader);
+    
+        usernameHeader.setFont(new Font("Monospaced", Font.BOLD, 20));
+        usernameHeader.setForeground(Color.WHITE);
+        usernameHeader.setHorizontalAlignment(JLabel.CENTER);
+        headerPanel.add(usernameHeader);
+    
+        scoreHeader.setFont(new Font("Monospaced", Font.BOLD, 20));
+        scoreHeader.setForeground(Color.WHITE);
+        scoreHeader.setHorizontalAlignment(JLabel.CENTER);
+        headerPanel.add(scoreHeader);
+    
+        dateHeader.setFont(new Font("Monospaced", Font.BOLD, 20));
+        dateHeader.setForeground(Color.WHITE);
+        dateHeader.setHorizontalAlignment(JLabel.CENTER);
+        headerPanel.add(dateHeader);
         
         panel.add(headerPanel);
         panel.add(Box.createVerticalStrut(10));
         
-        // Initialize data arrays
-        String[][] sprintHighscoreData = new String[10][4];
-        String[][] timetrialHighscoreData = new String[10][4];
-        
-        // Fill arrays with data from ScoreManager
+        // Fill data arrays with data from ScoreManager
         for (int i = 0; i < sprintHighscoreData.length; i++) {
             for (int j = 0; j < sprintHighscoreData[i].length; j++) {
                 if (j == 0) {
@@ -524,7 +589,6 @@ public class MenuScreen extends JPanel {
         }
         
         // Select the appropriate dataset based on the mode
-        String[][] selectedData;
         if ("GAME_SPRINT".equals(mode)) {
             selectedData = sprintHighscoreData;
         } else if ("GAME_TIMETRIAL".equals(mode)) {
@@ -534,16 +598,17 @@ public class MenuScreen extends JPanel {
         }
         
         // Add the rows to the panel
-        for (String[] score : selectedData) {
-            JPanel scoreRow = new JPanel(new GridLayout(1, 4)); // 4 columns
+        for (int i = 0; i < selectedData.length; i++) {
+            score = selectedData[i];
+            scoreRow = new JPanel(new GridLayout(1, 4)); // 4 columns
             scoreRow.setBackground(Color.BLACK);
             
-            for (String value : score) {
-                JLabel label = new JLabel(value);
-                label.setFont(new Font("Monospaced", Font.PLAIN, 16));
-                label.setForeground(Color.WHITE);
-                label.setHorizontalAlignment(JLabel.CENTER);
-                scoreRow.add(label);
+            for (int j = 0; j < score.length; j++) {
+                scoreLabel = new JLabel(score[j]);
+                scoreLabel.setFont(new Font("Monospaced", Font.PLAIN, 16));
+                scoreLabel.setForeground(Color.WHITE);
+                scoreLabel.setHorizontalAlignment(JLabel.CENTER);
+                scoreRow.add(scoreLabel);
             }
             
             panel.add(scoreRow);

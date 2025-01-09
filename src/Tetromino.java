@@ -8,8 +8,8 @@ public class Tetromino {
     private int previousRotation = 0; //Previous rotation state
     private int index; // Add an index field to store the type of piece
     
-
-    public static final int[][][][] TETROMINOS = {
+    // Array that stores every rotation configuration of each piece
+    public static final int[][][][] TETROMINOS = { 
         { // I-piece
             {{0, 0, 0, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}, {0, 0, 0, 0}}, // 0°
             {{0, 0, 1, 0}, {0, 0, 1, 0}, {0, 0, 1, 0}, {0, 0, 1, 0}}, // 90°
@@ -54,6 +54,7 @@ public class Tetromino {
         }
     };
 
+    // Array that stores every test for wall kicks 
     public static final int[][][] JLSTZ_WALLKICKS = {
         // 0 -> R
         {{0, 0}, {-1, 0}, {-1, 1}, {0, -2}, {-1, -2}},
@@ -73,6 +74,7 @@ public class Tetromino {
         {{0, 0}, {1, 0}, {1, 1}, {0, -2}, {1, -2}}
     };
 
+    // Array that stores every test for wall kicks for I pieces (different logic from other pieces)
     public static final int[][][] I_WALLKICKS = {
         // 0 -> R
         {{0, 0}, {-2, 0}, {1, 0}, {-2, -1}, {1, 2}},
@@ -103,6 +105,7 @@ public class Tetromino {
     public void rotateCW() {
         previousRotation = rotation;
         rotation = (rotation + 1) % 4; // Cycle through 0, 1, 2, 3
+        
     }
 
     // Rotate counter-clockwise
@@ -137,6 +140,10 @@ public class Tetromino {
         return rotation;
     }
 
+    public int[][] getCurrentRotation() {
+        return rotations[rotation];
+    }
+
     public int getPreviousRotation(){
         return previousRotation;
     }
@@ -145,9 +152,7 @@ public class Tetromino {
     public int getIndex() {
         return index;
     }
-    public int[][] getCurrentRotation() {
-        return rotations[rotation];
-    }
+
     // Draw the tetromino
     public void draw(Graphics g, int x, int y) {
         int[][] shape = getShape();

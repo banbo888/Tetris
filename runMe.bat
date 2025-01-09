@@ -8,7 +8,7 @@ javac SoundManager.java
 javac SettingsManager.java
 javac ScoreManager.java
 javac PieceBagGenerator.java
-javac PauseScreen.ava
+javac PauseScreen.java
 javac MenuScreen.java
 javac Main.java
 javac Timer.java

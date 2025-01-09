@@ -10,7 +10,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private static final int BOTTOM_PANEL_HEIGHT = 50; // Adjust as needed 
     public static final int GAME_HEIGHT = 600 + TOP_PANEL_HEIGHT + BOTTOM_PANEL_HEIGHT; // Original height plus new panels
     private static final int BLOCK_SIZE = Tetromino.BLOCK_SIZE;
-    private static final int GRID_ROWS = GAME_HEIGHT / BLOCK_SIZE;
     private static final int GRID_COLS = GAME_WIDTH / BLOCK_SIZE;
     private static final int SIDE_PANEL_WIDTH = 300; // Width of side panels
     private static final int GRID_OFFSET_X = SIDE_PANEL_WIDTH; // Offset for grid drawing and calculations
@@ -40,8 +39,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     // Video and Audio settings variables
     private boolean audioEnabled;
-    private int musicVolume;
-    private int sfxVolume;
     private int gridVisibility;
     private int ghostVisibility;
     private boolean actionTextOn;
@@ -350,8 +347,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         dasDelay = settings.getDas();
         softdropFactor = settings.getSdf();
         audioEnabled = settings.isAudioEnabled();
-        musicVolume = settings.getMusicVolume();
-        sfxVolume = settings.getSfxVolume();
         gridVisibility = settings.getGridVisibility();
         ghostVisibility = settings.getGhostVisibility();
         actionTextOn = settings.isActionTextOn();

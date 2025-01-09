@@ -133,7 +133,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         updateSettings(settings);
 
         currentPiece = pieceQueue.poll();
-        spawnNewPiece();
 
         this.setFocusable(true);
         this.addKeyListener(this);
@@ -721,7 +720,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         movementCounter = 0;
 
         // Check if can spawn new piece, game is over if cannot
-        if (checkCollision(pieceX, pieceY) && isInGame()) {
+        if (checkCollision(pieceX, pieceY) && isInGame() && grid.isTopRowOccupied()) {
             currentState = GameState.LOSE_SCREEN;
             SoundManager.playSound("sfx/topout.wav");
 

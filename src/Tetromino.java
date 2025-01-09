@@ -1,9 +1,14 @@
+//ICS Summative - Tetris by Richard Xiong & Eric Ma
+//Beta Program Submission
+//2025-01-09
+//Tetromino Class - Manages the 7 possible tetrominoes (i.e. color, rotations, width, length, pixel size).
+
 import java.awt.*;
 
 public class Tetromino {
     public static final int BLOCK_SIZE = 30; // Size of each block
-    private Color color;
-    private int [][][] rotations;
+    private Color color; // Piece color
+    private int [][][] rotations; // All possible rotations of shape
     private int rotation = 0; // Current rotation state
     private int previousRotation = 0; //Previous rotation state
     private int index; // Add an index field to store the type of piece
@@ -127,10 +132,12 @@ public class Tetromino {
         return rotations[rotation];
     }
 
+    // Get width of shape
     public int getShapeWidth() {
         return getShape()[0].length;
     }
 
+    // Get color of shape
     public Color getColor(){
         return color;
     }
@@ -140,10 +147,12 @@ public class Tetromino {
         return rotation;
     }
 
+    // Get values of current rotation from array
     public int[][] getCurrentRotation() {
         return rotations[rotation];
     }
 
+    // Get previous Rotation 
     public int getPreviousRotation(){
         return previousRotation;
     }

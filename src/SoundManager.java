@@ -19,17 +19,23 @@ public class SoundManager {
 
     // Method to play background music
     public static void playMusic(String track) {
-        if (musicClip != null) {
-            if (musicClip.isRunning()) {
-                musicClip.stop();
+        File audioFile;
+        AudioInputStream audioStream;
+
+        try {
+            if (musicClip != null) {
+                if (musicClip.isRunning()) {
+                    musicClip.stop();
+                }
+                musicClip.close();
+                musicClip = null;
             }
-            musicClip.close();
-            musicClip = null;
-        }
+        } catch (Exception e) {}
+
     
         try {
-            File audioFile = new File(track);
-            AudioInputStream audioStream = AudioSystem.getAudioInputStream(audioFile);
+            audioFile = new File(track);
+            audioStream = AudioSystem.getAudioInputStream(audioFile);
             musicClip = AudioSystem.getClip();
             musicClip.open(audioStream); // Open the clip before setting the volume
             applyVolume(musicClip, musicVolume); // Set the volume now that the clip is open
@@ -42,10 +48,14 @@ public class SoundManager {
 
     // Method to play sound effect
     public static void playSound(String file) {
+        File soundFile;
+        AudioInputStream audioInput;
+        Clip soundClip;
+
         try {
-            File soundFile = new File(file);
-            AudioInputStream audioInput = AudioSystem.getAudioInputStream(soundFile);
-            Clip soundClip = AudioSystem.getClip();
+            soundFile = new File(file);
+            audioInput = AudioSystem.getAudioInputStream(soundFile);
+            soundClip = AudioSystem.getClip();
             soundClip.open(audioInput);
             // Apply SFX volume
             applyVolume(soundClip, sfxVolume);
@@ -57,17 +67,24 @@ public class SoundManager {
 
     // Method to apply volume to a given clip
     private static void applyVolume(Clip clip, float volume) {
+        FloatControl gainControl;
+        float min, max, dB;
+
         if (clip == null || !clip.isOpen()) {
             return;
         }
         try {
-            FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
-            float dB = (float) (20.0 * Math.log10(volume));
+            gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+            min = gainControl.getMinimum();
+            max = gainControl.getMaximum();
+            dB = (float) (20.0 * Math.log10(volume));
+            dB = Math.max(min, Math.min(dB, max)); // Clamp the dB value within the allowable range
             gainControl.setValue(dB);
         } catch (IllegalArgumentException e) {
             System.err.println("Volume control not supported: " + e.getMessage());
         }
     }
+    
     // Method to set the music volume
     public static void setMusicVolume(float newVolume) {
         if (newVolume < 0.0f || newVolume > 1.0f) {
@@ -78,7 +95,6 @@ public class SoundManager {
             applyVolume(musicClip, musicVolume); // Update the volume for the current music
         }
     }
-
 
     // Method to set the SFX volume
     public static void setSfxVolume(float newVolume) {

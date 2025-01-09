@@ -1,98 +1,102 @@
+//ICS Summative - Tetris by Richard Xiong & Eric Ma
+//Beta Program Submission
+//2025-01-09
+//GameInterface Class - Manages the display and updates of game-related information, including the current piece, held piece, upcoming pieces, game stats, action texts, and power-up notifications.
+
 import java.awt.*;
 import java.util.Queue;
 import javax.swing.Timer;
 
 public class GameInterface {
-    private static final int BLOCK_SIZE = Tetromino.BLOCK_SIZE;
-    private int TOP_PANEL_HEIGHT;
-    private int GRID_OFFSET_X;
-    private Queue<Tetromino> pieceQueue;
-    private Tetromino heldPiece;
-    private Tetromino currentPiece;
-    private int pieceX;
-    private int pieceY;
-    private String gameState;
-    private boolean isCountingDown;
+    private static final int BLOCK_SIZE = Tetromino.BLOCK_SIZE; // Block size from Tetromino class
+    private int TOP_PANEL_HEIGHT; // Height of the top panel for game stats
+    private int GRID_OFFSET_X; // Horizontal offset for grid positioning
+    private Queue<Tetromino> pieceQueue; // Queue to hold upcoming tetromino pieces
+    private Tetromino heldPiece; // The piece held by the player
+    private Tetromino currentPiece; // The current piece on the game grid
+    private int pieceX; // Current X position of the piece on the grid
+    private int pieceY; // Current Y position of the piece on the grid
+    private String gameState; // Current state of the game (e.g., challenge, sprint, etc.)
+    private boolean isCountingDown; // Flag to track if the game is in countdown mode
 
-    //Action text
+    // Action text for displaying current game actions (e.g., combos, power-ups)
     private String actionText = "";
     private String tSpinText = "";
     private String pcText = "";
     private String backToBackText = "";
     private String comboString = "";
 
-    // Power Up Text
-    private String powerUpText = "";
-    private boolean showPowerUpText = false;
-    private long powerUpTextStartTime;
-    private static final long POWER_UP_TEXT_DURATION = 3000; // 3 seconds
-    private String powerUpActiveText = "";
-    private float powerUpFadeAlpha = 1.0f;
-    private Timer powerUpFadeTimer;
+    // Power-up related fields
+    private String powerUpText = ""; // Text for power-up notifications
+    private boolean showPowerUpText = false; // Flag to show power-up text
+    private long powerUpTextStartTime; // Start time of the power-up text
+    private static final long POWER_UP_TEXT_DURATION = 3000; // Duration for showing power-up text (3 seconds)
+    private String powerUpActiveText = ""; // Active power-up text (e.g., Slow Mode, Line Destroyer)
+    private float powerUpFadeAlpha = 1.0f; // Fade effect alpha for power-up text
+    private Timer powerUpFadeTimer; // Timer to control the fade effect of power-up text
 
-    // Add fields for fade effect
-    private Timer fadeTimer;
-    private float fadeAlpha = 0.0f;
-    private static final int FADE_INTERVAL = 75;
+    // Fade effect fields for action text
+    private Timer fadeTimer; // Timer for action text fade effect
+    private float fadeAlpha = 0.0f; // Alpha value for fading the action text
+    private static final int FADE_INTERVAL = 75; // Interval for fade effect
 
+    // Constructor to initialize grid offset and top panel height
     public GameInterface(int gridOffsetX, int topPanelHeight) {
         this.GRID_OFFSET_X = gridOffsetX;
         this.TOP_PANEL_HEIGHT = topPanelHeight;
 
-        //Initialize the fade timer used for action text
+        // Initialize the fade timer used for action text
         fadeTimer = new Timer(FADE_INTERVAL, e -> {
-            fadeAlpha -= 0.02f;
+            fadeAlpha -= 0.02f; // Decrease alpha for fade effect
             if (fadeAlpha <= 0) {
-                fadeAlpha = 0;
-                actionText = "";
-                ((Timer) e.getSource()).stop(); // Stop the timer when fadeAlpha is 0
+                fadeAlpha = 0; // Ensure alpha doesn't go below 0
+                actionText = ""; // Clear action text when fade completes
+                ((Timer) e.getSource()).stop(); // Stop the fade timer
             }
         });
-        fadeTimer.setRepeats(true);
+        fadeTimer.setRepeats(true); // Ensure the fade timer repeats
 
-        // Add power-up fade timer
+        // Initialize power-up fade timer
         powerUpFadeTimer = new Timer(FADE_INTERVAL, e -> {
-            powerUpFadeAlpha -= 0.02f;
+            powerUpFadeAlpha -= 0.02f; // Decrease alpha for power-up fade effect
             if (powerUpFadeAlpha <= 0) {
-                powerUpFadeAlpha = 0;
-                showPowerUpText = false;
-                ((Timer) e.getSource()).stop();
+                powerUpFadeAlpha = 0; // Ensure alpha doesn't go below 0
+                showPowerUpText = false; // Hide power-up text when fade completes
+                ((Timer) e.getSource()).stop(); // Stop the power-up fade timer
             }
         });
-        powerUpFadeTimer.setRepeats(true);
-        
+        powerUpFadeTimer.setRepeats(true); // Ensure the power-up fade timer repeats
     }
 
+    // Method to trigger a power-up text display based on the power-up type
     public void triggerPowerUpText(int powerUp) {
-        showPowerUpText = true;
-        powerUpTextStartTime = System.currentTimeMillis();
-        powerUpFadeAlpha = 1.0f;
-        powerUpFadeTimer.restart();
-        if(powerUp == 1){
-            powerUpActiveText = "SLOW MODE ACTIVATED!";
-        }
-        else if(powerUp == 2){
-            powerUpActiveText = "LINE DESTROYER ACTIVATED!";
+        showPowerUpText = true; // Show power-up text
+        powerUpTextStartTime = System.currentTimeMillis(); // Record the start time
+        powerUpFadeAlpha = 1.0f; // Reset fade alpha to full opacity
+        powerUpFadeTimer.restart(); // Restart the fade timer
+        if (powerUp == 1) {
+            powerUpActiveText = "SLOW MODE ACTIVATED!"; // Set text for slow mode power-up
+        } else if (powerUp == 2) {
+            powerUpActiveText = "LINE DESTROYER ACTIVATED!"; // Set text for line destroyer power-up
         }
     }
 
+    // Method to update the power-up availability text
     public void powerUpAvailable(int powerUp) {
-        if(powerUp == 0){
-            powerUpText = "";
-        }
-        else if (powerUp == 1){
-            powerUpText = "SLOW TIME:";
-        }
-        else if (powerUp == 2){
-            powerUpText = "DESTROY LINES:";
+        if (powerUp == 0) {
+            powerUpText = ""; // Clear power-up text if no power-up is available
+        } else if (powerUp == 1) {
+            powerUpText = "SLOW TIME:"; // Display text for slow time power-up
+        } else if (powerUp == 2) {
+            powerUpText = "DESTROY LINES:"; // Display text for line destroyer power-up
         }
     }
 
-
+    // Method to draw game stats (time, lines left, score, etc.) on the screen
     public void drawStats(Graphics g, String timeElapsedFormatted, String timeRemaining, 
-    long timeElapsedMiliseconds, int piecesPlaced, int linesCleared, int score, int level, boolean powerUpAvailable, boolean powerUpUsed) {
-        // Variable declaration
-        // Stats displayed variables
+                          long timeElapsedMiliseconds, int piecesPlaced, int linesCleared, int score, int level, 
+                          boolean powerUpAvailable, boolean powerUpUsed) {
+        // Declare variables to manage displayed stats
         String timeString;
         String mainTime;
         String milliseconds;
@@ -102,53 +106,48 @@ public class GameInterface {
 
         // Positioning variables
         int posX = 100;
-        int posY = 625; // Align with held pieces
+        int posY = 625; // Position to align with held pieces
         FontMetrics fmMain, fmPiecesPlaced;
         int mainTimeWidth, piecesCounterWidth;
 
-        if(!isCountingDown){
-            if(gameState.equals("GAME_SPRINT")){
-                timeString = timeElapsedFormatted; // Get current time
+        // Handle countdown state based on game state
+        if (!isCountingDown) {
+            if (gameState.equals("GAME_SPRINT")) {
+                timeString = timeElapsedFormatted; // Use formatted elapsed time for sprint
+            } else if (gameState.equals("GAME_TIMETRIAL")) {
+                timeString = timeRemaining; // Use remaining time for time trial
+            } else {
+                timeString = timeElapsedFormatted; // Use formatted elapsed time for other game states
             }
-            else if(gameState.equals("GAME_TIMETRIAL") ){
-                timeString = timeRemaining; // Get time remaining
-            }
-            else{
-                timeString = timeElapsedFormatted; // Get current time
-            }
-        }
-        else{
-            if(gameState.equals("GAME_SPRINT")){
-                timeString = "00:00.000"; // Display 0 if game did not start
-            }
-            else if(gameState.equals("GAME_TIMETRIAL")){
-                timeString = "02:00.000"; // Display 2 minutes if game did not start (time remaining)
-            }
-            else{
-            timeString = "00:00.000"; // Display 0 if game did not start
+        } else {
+            // If countdown is active, show default countdown values
+            if (gameState.equals("GAME_SPRINT")) {
+                timeString = "00:00.000"; // Show 0 for sprint mode
+            } else if (gameState.equals("GAME_TIMETRIAL")) {
+                timeString = "02:00.000"; // Show 2 minutes for time trial mode
+            } else {
+                timeString = "00:00.000"; // Show 0 for other game modes
             }
         }
 
-        // Get lines remaining
-        if(linesCleared <= 40){
-            linesRemaining = 40 - linesCleared;
-        }
-        else{
-            linesRemaining = 0;
+        // Calculates lines remaining based on cleared lines
+        if (linesCleared <= 40) {
+            linesRemaining = 40 - linesCleared; // Lines left in sprint mode
+        } else {
+            linesRemaining = 0; // No lines remaining if cleared more than 40
         }
 
-        // Calculate pieces placed per second
+        // Calculates pieces placed per second
         timeInSeconds = timeElapsedMiliseconds / 1000.0;
-        if(!isCountingDown){
-            piecePerSecond = piecesPlaced / timeInSeconds;
-        }
-        else{
-            piecePerSecond = 0;
+        if (!isCountingDown) {
+            piecePerSecond = piecesPlaced / timeInSeconds; // Pieces placed per second during active game
+        } else {
+            piecePerSecond = 0; // No pieces placed during countdown
         }
         
-        // Split the time string into two parts: main time and milliseconds
-        mainTime = timeString.substring(0, timeString.lastIndexOf('.') + 1); // "00:00."
-        milliseconds = timeString.substring(timeString.lastIndexOf('.') + 1); // "000"
+        // Split time string into main time and milliseconds parts
+        mainTime = timeString.substring(0, timeString.lastIndexOf('.') + 1); // Extract main time part (e.g., "00:00.")
+        milliseconds = timeString.substring(timeString.lastIndexOf('.') + 1); // Extract milliseconds part (e.g., "000")
     
         // Draw "TIME:" label
         g.setColor(Color.WHITE);
@@ -164,82 +163,72 @@ public class GameInterface {
         // Draw the milliseconds part
         g.setFont(new Font("SansSerif", Font.PLAIN, 25)); // Smaller font for milliseconds
         g.drawString(milliseconds, posX + mainTimeWidth, posY); // Offset by the width of main time
+
+        // Display power-up availability and usage instructions
         if (gameState.equals("GAME_CHALLENGE") && powerUpAvailable && !powerUpUsed) {
             g.setFont(new Font("SansSerif", Font.BOLD, 25));
             g.setColor(Color.GREEN);
-            g.drawString(powerUpText, GRID_OFFSET_X + 300 + 30, posY - 40);
+            g.drawString(powerUpText, GRID_OFFSET_X + 300 + 30, posY - 40); // Display power-up text
             g.setFont(new Font("SansSerif", Font.PLAIN, 20));
             g.setColor(Color.WHITE);
-            g.drawString("Press V to activate", GRID_OFFSET_X + 300 + 30, posY);
+            g.drawString("Press V to activate", GRID_OFFSET_X + 300 + 30, posY); // Display activation hint
         }
-        if(gameState.equals("GAME_SPRINT")){
-            // Draw "LINES LEFT:" label
-            g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Smaller font for the label
+
+        // Draw other game stats (e.g., lines left, score, level) based on the game state
+        if (gameState.equals("GAME_SPRINT")) {
+            g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Label font
             g.drawString("LINES LEFT:", posX, posY - 140);
-
-            // Draw lines remaining counter
-            g.setFont(new Font("SansSerif", Font.BOLD, 35));
+            g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Value font
             g.drawString(String.valueOf(linesRemaining), posX, posY - 95);
-        }
-        else if(gameState.equals("GAME_TIMETRIAL") || gameState.equals("GAME_CHALLENGE")){
-            // Draw "SCORE:" label
-            g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Smaller font for the label
+        } else if (gameState.equals("GAME_TIMETRIAL") || gameState.equals("GAME_CHALLENGE")) {
+            g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Label font
             g.drawString("SCORE:", posX, posY - 140);
-
-            // Draw score counter
-            g.setFont(new Font("SansSerif", Font.BOLD, 35)); 
+            g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Value font
             g.drawString(String.valueOf(score), posX, posY - 95);
-
-            if(gameState.equals("GAME_TIMETRIAL")){
-                // Draw LEVEL:" label
-                g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Smaller font for the label
+            if (gameState.equals("GAME_TIMETRIAL")) {
+                g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Label font
                 g.drawString("LEVEL:", GRID_OFFSET_X + 300 + 30, posY - 40);
-
-                // Draw lines remaining counter
-                g.setFont(new Font("SansSerif", Font.BOLD, 35)); 
-                g.drawString(String.valueOf(level), GRID_OFFSET_X + 300 + 30, posY);
+                g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Value font
+                g.drawString(String.valueOf(level), GRID_OFFSET_X + 300 + 30, posY); // Level counter
             }
         }
 
-        //Draw "PIECES PLACED:" label
-        g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Smaller font for the label
+        // Draw pieces placed and pieces per second statistics
+        g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Label font
         g.drawString("PIECES:", posX, posY - 245);
-
-        //Draw pieces placed counter
-        g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Larger font for main time
+        g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Value font
         fmPiecesPlaced = g.getFontMetrics();
-        piecesCounterWidth = fmPiecesPlaced.stringWidth(String.valueOf(piecesPlaced)); // Get width of main time string
-        g.drawString(String.valueOf(piecesPlaced), posX, posY - 195);
-
-        // Draw pieces placed per second
-        g.setFont(new Font("SansSerif", Font.PLAIN, 25)); // Smaller font for PPS
-        g.drawString(String.format("%.2f", piecePerSecond) + "/S", posX + piecesCounterWidth + 20, posY - 195);
-        
+        piecesCounterWidth = fmPiecesPlaced.stringWidth(String.valueOf(piecesPlaced)); // Get width of pieces counter
+        g.drawString(String.valueOf(piecesPlaced), posX, posY - 195); // Display pieces placed
+        g.setFont(new Font("SansSerif", Font.PLAIN, 25)); // Font for pieces per second
+        g.drawString(String.format("%.2f", piecePerSecond) + "/S", posX + piecesCounterWidth + 20, posY - 195); // Display pieces per second
     }
 
     public void drawQueue(Graphics g) {
-        // Variable declaration
-        Tetromino[] piecesArray; // Next pieces in queue
-
-        // Positioning variables
-        int startX = GRID_OFFSET_X + 300 + 30; // Right side panel
-        int startY = 120;              // Start Y position for the first piece in the queue
-        int spacing = 85;            // Vertical spacing between queued pieces
+        // Array declaration to hold the next pieces in the queue.
+        Tetromino[] piecesArray; 
     
-        // Draw the "Next Pieces" label
+        // Set up the starting positions and spacing for drawing the queue
+        int startX = GRID_OFFSET_X + 300 + 30; // Position for the right panel where the queue is drawn
+        int startY = 120; // Initial Y position for the first piece
+        int spacing = 85; // Vertical spacing between each queued piece
+        
+        // Draw the "NEXT" label indicating the upcoming pieces
         g.setColor(Color.WHITE);
         g.setFont(new Font("SansSerif", Font.BOLD, 25));
         g.drawString("NEXT", startX, startY - 20);
-    
-        // Draw the next pieces in the queue
+        
+        // Convert the pieceQueue to an array and draw each piece in the queue
         piecesArray = pieceQueue.toArray(new Tetromino[0]);
         for (int i = 0; i < piecesArray.length; i++) {
+            // For each piece in the queue, draw it at the calculated position
             piecesArray[i].draw(g, startX, startY + (i * spacing));
         }
     }
-
+    
     public void updateState(Queue<Tetromino> pieceQueue, Tetromino heldPiece, 
-            Tetromino currentPiece, int pieceX, int pieceY, String gameState, boolean isCountingDown) {
+                            Tetromino currentPiece, int pieceX, int pieceY, String gameState, boolean isCountingDown) {
+        // Update the game state with the new pieces and position details.
         this.pieceQueue = pieceQueue;
         this.heldPiece = heldPiece;
         this.currentPiece = currentPiece;
@@ -248,34 +237,37 @@ public class GameInterface {
         this.gameState = gameState;
         this.isCountingDown = isCountingDown;
     }
-
+    
     public void drawHeldPiece(Graphics g) {
-        int startX = 100; // Left side panel
+        // Defines the starting positions for drawing the held piece
+        int startX = 100; // Position for the left side panel
         int startY = 120;
-
-        // Draw "Held Piece" label
+    
+        // Draws the "HOLD" label to indicate the held piece area
         g.setColor(Color.WHITE);
         g.setFont(new Font("SansSerif", Font.BOLD, 25));
         g.drawString("HOLD", startX, startY - 20);
-
-        // Draw the held piece (if any)
+    
+        // If a piece is held, draw it at the specified location
         if (heldPiece != null) {
             heldPiece.draw(g, startX, startY);
         }
     }
-
+    
     public void drawGhostPiece(Graphics g, Grid grid, int ghostVisibility) {        
-        int ghostY = pieceY; // set the ghost piece to the current piece
+        // Sets the initial Y position for the ghost piece to the current piece's position
+        int ghostY = pieceY; 
         Graphics2D g2d = (Graphics2D) g.create();
         
-        // Find the lowest valid position for the ghost piece
+        // Determine lowest valid position for the ghost piece by checking for collisions
         while (!grid.checkCollision(currentPiece, pieceX, ghostY + 1)) {
-            ghostY++;
+            ghostY++; // Move down until collision is detected
         }
         
-        // Draw the ghost piece with reduced opacity
-        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, ghostVisibility/100.0f));
+        // Set opacity for the ghost piece (transparent to indicate a 'ghost' appearance)
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, ghostVisibility / 100.0f));
         
+        // Draw the ghost piece at its calculated position
         currentPiece.draw(g2d, 
             GRID_OFFSET_X + pieceX * BLOCK_SIZE, 
             TOP_PANEL_HEIGHT + ghostY * BLOCK_SIZE
@@ -283,11 +275,10 @@ public class GameInterface {
         
         g2d.dispose();
     }
-
+    
     public void triggerActionText(int linesCleared, boolean isTSpin, boolean isGridEmpty, int backToBackCounter, int comboCounter) {
-        // Determine new action text 
-
-        switch (linesCleared){
+        // Determine action text based on lines cleared
+        switch (linesCleared) {
             case 1:
                 actionText = "SINGLE";
                 break;
@@ -304,96 +295,99 @@ public class GameInterface {
                 actionText = "";
                 break;
         }
-
-        //Tspin action text
-        if (isTSpin){
+    
+        // Handle T-spin text if T-spin was performed
+        if (isTSpin) {
             tSpinText = "T-SPIN";
-        }
-        else{
+        } else {
             tSpinText = "";
         }
-
-        //All clear action text
-        if(isGridEmpty){
+    
+        // Handle All Clear text if the grid is empty
+        if (isGridEmpty) {
             pcText = "ALL CLEAR!";
-        }
-        else {
+        } else {
             pcText = "";
         }
-
-        //Back to back action text
-        if(backToBackCounter == 2){
+    
+        // Handle back-to-back text for consecutive actions
+        if (backToBackCounter == 2) {
             backToBackText = "B2B";
-        }
-        else if(backToBackCounter > 2){
+        } else if (backToBackCounter > 2) {
             backToBackText = "B2B x" + (backToBackCounter - 1);
-        }
-        else{
+        } else {
             backToBackText = "";
         }
-    
-        //Combo action text
-        if(comboCounter >= 2){
+        
+        // Handles combo text for multiple consecutive line clears
+        if (comboCounter >= 2) {
             comboString = String.valueOf(comboCounter - 1) + " COMBO";
-        }
-        else{
+        } else {
             comboString = "";
         }
-
+    
+        // If action text exists, reset fade and start the fade timer for a smooth transition
         if (!actionText.isEmpty()) {
-            fadeAlpha = 1.0f; // Reset fade effect
-            fadeTimer.start(); // Start fade timer
+            fadeAlpha = 1.0f; // Reset the fade effect
+            fadeTimer.start(); // Start the fade timer to gradually reduce opacity
         }
     }
-
-    // Modify the drawActionText method
+    
     public void drawActionText(Graphics g) {
+        // Sets starting position for drawing the action text
         int posX = 100;
         int posY = 615;
+        
         FontMetrics fmPowerUp;
         int powerUpWidth;
+        
         Graphics2D g2dAction = (Graphics2D) g.create();
         Graphics2D g2dPowerUp = (Graphics2D) g.create();
-
-
     
-        // Draw regular action text
+        // Draw the regular action text (e.g., "SINGLE", "T-SPIN", etc.) with fading effect
         if (fadeAlpha > 0 && actionText != null && !actionText.isEmpty()) {
             g2dAction.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, fadeAlpha));
             g2dAction.setFont(new Font("SansSerif", Font.BOLD, 35));
             g2dAction.setColor(Color.WHITE);
             g2dAction.drawString(actionText, posX, posY - 350);
+            
+            // Draw additional action details such as T-spin, All Clear, Back-to-Back, and Combo
             g2dAction.setFont(new Font("SansSerif", Font.BOLD, 25));
             g2dAction.setColor(Color.MAGENTA);
             g2dAction.drawString(tSpinText, posX, posY - 390);
+            
             g2dAction.setFont(new Font("SansSerif", Font.BOLD, 45));
-            g2dAction.setColor(new Color(255, 234,0));
+            g2dAction.setColor(new Color(255, 234, 0));
             g2dAction.drawString(pcText, posX + 220, posY - 360);
+            
             g2dAction.setFont(new Font("SansSerif", Font.BOLD, 30));
             g2dAction.setColor(Color.CYAN);
             g2dAction.drawString(backToBackText, posX, posY - 310);
+            
             g2dAction.setFont(new Font("SansSerif", Font.BOLD, 30));
             g2dAction.setColor(Color.YELLOW);
             g2dAction.drawString(comboString, posX, posY - 270);
             g2dAction.dispose();
         }
-
-        // Draw power-up activation text
+    
+        // Draw power-up activation text if necessary
         if (showPowerUpText) {
             g2dPowerUp.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, powerUpFadeAlpha));
             g2dPowerUp.setFont(new Font("SansSerif", Font.BOLD, 25));
             g2dPowerUp.setColor(new Color(0, 255, 255)); // Cyan color
             fmPowerUp = g2dPowerUp.getFontMetrics();
             powerUpWidth = fmPowerUp.stringWidth(powerUpActiveText);
+            
+            // Center the power-up text on the screen
             g2dPowerUp.drawString(powerUpActiveText, 
                 GRID_OFFSET_X + (GamePanel.GAME_WIDTH - powerUpWidth) / 2,
                 posX + 50);
             g2dPowerUp.dispose();
-
-            // Check if power-up duration is over
+    
+            // If the power-up duration has elapsed, hide the power-up text
             if (System.currentTimeMillis() - powerUpTextStartTime >= POWER_UP_TEXT_DURATION) {
                 showPowerUpText = false;
             }
         }
     }
-}
+}    

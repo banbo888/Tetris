@@ -157,6 +157,16 @@ public class Grid {
         }
     }
 
+    // Method to check if the top row has any occupied cells
+    public boolean isTopRowOccupied() {
+        for (int col = 0; col < COLS; col++) {
+            if (grid[0][col] != 0) { // Assuming 0 represents an empty cell
+                return true; // Return true if any cell in the top row is occupied
+            }
+        }
+        return false; // Return false if no cells in the top row are occupied
+    }
+
     public void draw(Graphics g, int offsetX, int offsetY) {
         // Draws the entire grid, including the filled cells and their colors
         for (int row = 0; row < ROWS; row++) {

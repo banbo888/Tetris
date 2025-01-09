@@ -5,6 +5,9 @@ import java.util.Queue;
 import javax.swing.*;
 
 public class GamePanel extends JPanel implements Runnable, KeyListener {
+
+    //Variable Declaration
+    
     public static final int GAME_WIDTH = 300;  // Width of main grid
     private static final int TOP_PANEL_HEIGHT = 50; // Adjust as needed
     private static final int BOTTOM_PANEL_HEIGHT = 50; // Adjust as needed 
@@ -107,7 +110,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         PAUSE       // Pause state
 
     }
-    
+
+    //GamePanel Constructor
     public GamePanel() {
         menu = new MenuScreen(this);
         pauseScreen = new ExitScreen(this, "EXIT TO MAIN MENU?", "RESUME", "EXIT TO MAIN MENU", "PAUSE");
@@ -181,8 +185,10 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             loseScreen.resetButtonAppearance(loseScreen.getMainMenuButton());
         });
     }
-    
+
+    //Method to start game
     public void startGame(int mode) {
+        //Handling 4 Gamemodes
         switch (mode) {
             case 1:
                 currentState = GameState.GAME_SPRINT;
@@ -202,13 +208,14 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         
     }
 
+    //Method to start countdown (before user can play)
     private void startCountdown() {
         isCountingdown = true;
         countdownStartTime = System.currentTimeMillis() - 1000; // Set to current time directly
         repaint();
     }
 
-
+    //Method to draw countdown via Graphics
     private void drawCountdown(Graphics g) {
         long currentTime, elapsedTime;
         int displayIndex;
@@ -277,7 +284,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
-
+    //Method to restart game once game over or task complete
     public void restartGame() {
         startCountdown();
 
@@ -325,7 +332,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         // Repaint to update the display
         repaint();
     }
-
+    //Method to initialize piece queue (subsequent pieces the user will place)
     private void initializePieceQueue() {
         //Cycle through first bag
         for(int i = 0; i < 6; i++){
@@ -336,11 +343,12 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             pieceQueue.add(bagGenerator.getNextPiece());
         }
     }
-    
+    //Method to add piece to the queue randomly via bagGenerator
     private void addPieceToQueue() {
         pieceQueue.add(bagGenerator.getNextPiece());
     }
 
+    //Method to update settings of the game/controls
     public void updateSettings(SettingsManager newSettings) {
         this.settings = newSettings;
         arrDelay = settings.getArr();
@@ -352,6 +360,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         actionTextOn = settings.isActionTextOn();
     }
 
+    //Paint method
     public void paint(Graphics g) {
         int gridDrawOffset;
 
@@ -433,7 +442,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
-
+    //Method to take current piece user has and holds it, giving user flexibility in gameplay
     private void holdPiece() {
         Tetromino temp; // temp Tetromino object to swap piece
 
@@ -473,7 +482,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         repaint();
     }
     
-
+    //Method to handle DAS setting
     private void handleDAS() {
         if (lastKeyPressed == -1 && leftKeyPressed) { // Move left if last key was left
             if (dasCharge >= dasDelay) {
@@ -493,7 +502,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             dasCharge = 0; // Reset DAS charge if no keys are pressed
         }
     }
-    
+
+    //Run method
     @Override
     public void run() {
         long lastTime = System.nanoTime();
@@ -539,6 +549,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     }
 
+    //Method to handle and update all audio and sound settings
     private void updateAudioSettings() {
         if (!audioEnabled) {
             SoundManager.setMusicVolume(0);
@@ -549,7 +560,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
-    
+    //Method to update the game
     private void updateGame() {
         updateSettings(settings);
 
@@ -593,6 +604,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     }
 
+    //Method to handle various conditions the game may encounter
     private void gameCondition() {
         if (grid.getLinesCleared() >= 40 && currentState.equals(GameState.GAME_SPRINT)) {
             currentState = GameState.SCORE_SCREEN;
@@ -642,6 +654,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
+    //Method to store powerups (Slow down time, Line Destroyer)
     public void storePowerUps(int powerup) {
         if (!powerUpStored) {
             if (powerup == 1) {
@@ -658,6 +671,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
+    //Method to activate powerups
     public void activatePowerUp(int powerup) {
         if (powerUpAvailable && !powerUpUsed && currentState == GameState.GAME_CHALLENGE) {
             switch (powerup) {
@@ -678,14 +692,17 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
+    //Method to save high scores
     public void saveHighScore(String previousState, String result, String username){
         scoreManager.saveScore(previousState, result, username);
     }
 
+    //Method to check for any collisions
     private boolean checkCollision(int x, int y) {
         return grid.checkCollision(currentPiece, x, y);
     }
 
+    //Method to spawn new piece into the game
     private void spawnNewPiece() {
         currentPiece = pieceQueue.poll();
         addPieceToQueue();
@@ -710,6 +727,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
+    //Method to immediately drop the piece to the bottom of the screen when the user presses space
     private void hardDrop() {
         while (!checkCollision(pieceX, pieceY + 1)) {
             pieceY++;
@@ -730,6 +748,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         spawnNewPiece();
     }
 
+    //Method to update the current count of lines cleared
     private void updateLinesCleared(boolean isTspin) {
         int previousLinesCleared = grid.getLinesCleared();
         
@@ -774,6 +793,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
+    //Method to control gravity (how fast the block is falling)
     private void controlGravity(){
         int linesCleared = grid.getLinesCleared();
         int previousLevel = level; // Store the previous level
@@ -813,6 +833,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
+    //Method to calculate current score of the round the user is playing
     private void calculateScore(boolean isTspin){
         double backToBackMultiplier;
 
@@ -872,6 +893,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         score += 2 * harddropDistance; //2 points per cell dropped
     }
 
+    //Method to check if the Grid is empty or not
     private boolean isGridEmpty(){
         for(int row = 0; row < Grid.ROWS; row++){
             for(int col = 0; col < Grid.COLS; col++){
@@ -883,6 +905,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         return true;
     }
 
+    //Method to allow the user to move piece left and right
     private void movePieceHorizontally(int direction) {
         if (!checkCollision(pieceX + direction, pieceY)) {
             pieceX += direction;
@@ -893,6 +916,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
+    //Method to allow users to spin a piece even when it is touching the left/right wall
     public boolean tryWallKick(int deltaX, int deltaY) {
         // Store original position
         int originalX = pieceX;
@@ -919,6 +943,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         return true;
     }
 
+    //Method to perform a wall kick
     private boolean performWallKick() {
     
         int currentState = currentPiece.getRotationState();
@@ -962,7 +987,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         
         return false;
     }    
-
+    
+    //Method to check if a line clear is a T-Spin
     public boolean isTSpin(){
         // Corner check variables
         int row, col;
@@ -1008,6 +1034,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         return occupiedCorners >= 3;
     }
 
+    //KeyPressed method to check for keyboard pressing (input)
     public void keyPressed(KeyEvent e) {
         boolean pieceWasMoved = false;
 
@@ -1136,6 +1163,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
     }
 
+    //Key Released method to check for when a key is released
     public void keyReleased(KeyEvent e) {
         switch (e.getKeyCode()) {
             case KeyEvent.VK_LEFT:
@@ -1181,6 +1209,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         scoreScreen.resetButtonAppearance(scoreScreen.getAgainButton());
     }
 
+    //Method to return to main menu
     public void returntoMenu(){
         currentState = GameState.MENU;
         menu.resetToMainMenu(null);
@@ -1190,6 +1219,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         scoreScreen.resetButtonAppearance(scoreScreen.getMenuButton());
     }
 
+    //Method to check if user is currently in game
     public boolean isInGame(){
         if (currentState == GameState.GAME_CHALLENGE || currentState == GameState.GAME_SPRINT || currentState == GameState.GAME_TIMETRIAL || currentState == GameState.GAME_PRACTICE){
             return true;

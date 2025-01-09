@@ -2,21 +2,25 @@ import javax.swing.*;
 import java.awt.*;
 
 public class ExitScreen extends JPanel {
-    public JButton resumeBotton;
-    public JButton mainMenuButton;
-    private JPanel titlePanel;
-    private JPanel buttonsPanel;
-    private JLabel exitLabel;
+    private JButton resumeBotton;
+    private JButton mainMenuButton;
 
     public ExitScreen(GamePanel gamePanel, String label, String button1, String button2, String type) {
-        setLayout(new GridBagLayout()); // Changed to GridBagLayout for better centering
-        setBackground(Color.BLACK); // More translucent background
+        // Variable declaration
+        JPanel containerPanel;
+
+        JPanel titlePanel;
+        JPanel buttonsPanel;
+        JLabel exitLabel;
+
+        setLayout(new GridBagLayout()); // GridBagLayout for centering
+        setBackground(Color.BLACK); 
 
         // Main container panel to hold everything
-        JPanel containerPanel = new JPanel();
+        containerPanel = new JPanel();
         containerPanel.setLayout(new BorderLayout());
-        containerPanel.setBackground(new Color(0, 0, 0, 120)); // Semi-transparent container
-        containerPanel.setPreferredSize(new Dimension(300, 150)); // Smaller fixed size
+        containerPanel.setBackground(new Color(0, 0, 0, 120));
+        containerPanel.setPreferredSize(new Dimension(300, 150)); // Smaller fixed size on screen
 
         // Title Panel
         titlePanel = new JPanel();
@@ -53,6 +57,7 @@ public class ExitScreen extends JPanel {
 
     private JButton createMenuButton(String text) {
         JButton button = new JButton(text);
+
         button.setFocusPainted(false);
         button.setFont(new Font("Arial", Font.BOLD, 12)); // Smaller font
         button.setBackground(new Color(255, 255, 255, 200)); // Semi-transparent white

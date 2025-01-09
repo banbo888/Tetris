@@ -1,3 +1,8 @@
+//ICS Summative - Tetris by Richard Xiong & Eric Ma
+//Beta Program Submission
+//2025-01-09
+//Menu Class - Manages the Menu, which allows users to start the game, see high scores, manage setings, and view instructions.
+
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 

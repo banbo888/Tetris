@@ -8,27 +8,43 @@ public class ScoreManager {
     private static final String CHALLENGE_SCORES_FILE = "challenge_scores.txt";
     private static final int MAX_SCORES = 10;
 
-    public void saveScore(String gameMode, String score, String username) {
-        String fileName = getFileNameForMode(gameMode);
-        List<String> scores = loadScores(fileName);
+    // Sorting variables
+    private String[] aParts, bParts;
+    private long aMillis, bMillis;
+    private int scoreA, scoreB;
 
-        // Get current date and time
-        String timestamp = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
-        String entry = score + "," + username + "," + timestamp;
+
+    public void saveScore(String gameMode, String score, String username) {
+        String fileName;
+        List<String> scores = new ArrayList<>();
+        // Data variables
+        String timestamp, entry;
+
+
+        fileName = getFileNameForMode(gameMode);
+        scores = loadScores(fileName);
+
+        // Set username if empty
+        if (username.equals("")){
+            username = "Anonymous";
+        }
+
+        timestamp = new SimpleDateFormat("yyyy-MM-dd").format(new Date()); // Get current date and time
+        entry = score + "," + username + "," + timestamp; // Put together the different data
 
         scores.add(entry);
 
         Collections.sort(scores, (a, b) -> {
-            String[] aParts = a.split(",");
-            String[] bParts = b.split(",");
+            aParts = a.split(",");
+            bParts = b.split(",");
             
             if (gameMode.equals("GAME_SPRINT")) {
-                long aMillis = parseTimeToMillis(aParts[0]);
-                long bMillis = parseTimeToMillis(bParts[0]);
+                aMillis = parseTimeToMillis(aParts[0]);
+                bMillis = parseTimeToMillis(bParts[0]);
                 return Long.compare(aMillis, bMillis);
             } else {
-                int scoreA = Integer.parseInt(aParts[0].replace(",", ""));
-                int scoreB = Integer.parseInt(bParts[0].replace(",", ""));
+                scoreA = Integer.parseInt(aParts[0].replace(",", ""));
+                scoreB = Integer.parseInt(bParts[0].replace(",", ""));
                 return Integer.compare(scoreB, scoreA);
             }
         });
@@ -51,13 +67,17 @@ public class ScoreManager {
     }
 
     public String getEntryComponent(String gameMode, int nthScore, String component) {
-        List<String> scores = getScores(gameMode);
+        List<String> scores = new ArrayList<>();
+        String entry;
+        String [] parts;
+        
+        scores = getScores(gameMode);
         if (scores.isEmpty() || nthScore < 1 || nthScore > scores.size()) {
             return "---";
         }
 
-        String entry = scores.get(nthScore - 1);
-        String[] parts = entry.split(",");
+        entry = scores.get(nthScore - 1);
+        parts = entry.split(",");
 
         switch (component.toLowerCase()) {
             case "score":
@@ -72,25 +92,30 @@ public class ScoreManager {
     }
 
     public boolean isHighScore(String result, String previousState) {
-        List<String> scores = getScores(previousState);
+        List<String> scores = new ArrayList<>();
+        String worstScore;
+        int newScoreValue, worstScoreValue;
+
+        scores = getScores(previousState);
         if (scores.size() < MAX_SCORES) {
             return true;
         }
-        String worstScore = scores.get(scores.size() - 1).split(",")[0];
+        worstScore = scores.get(scores.size() - 1).split(",")[0];
 
         if (previousState.equals("GAME_SPRINT")) {
             return parseTimeToMillis(result) < parseTimeToMillis(worstScore);
         } else {
-            int newScoreValue = Integer.parseInt(result.replace(",", ""));
-            int worstScoreValue = Integer.parseInt(worstScore.replace(",", ""));
+            newScoreValue = Integer.parseInt(result.replace(",", ""));
+            worstScoreValue = Integer.parseInt(worstScore.replace(",", ""));
             return newScoreValue > worstScoreValue;
         }
     }
 
     private List<String> loadScores(String fileName) {
         List<String> scores = new ArrayList<>();
+        String line;
+
         try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
-            String line;
             while ((line = reader.readLine()) != null) {
                 scores.add(line.trim());
             }
@@ -114,11 +139,14 @@ public class ScoreManager {
     }
 
     public long parseTimeToMillis(String time) {
-        String[] parts = time.split(":");
-        int minutes = Integer.parseInt(parts[0]);
-        String[] secondParts = parts[1].split("\\.");
-        int seconds = Integer.parseInt(secondParts[0]);
-        int millis = Integer.parseInt(secondParts[1]);
+        int minutes, seconds, millis;
+        String[] parts, secondParts;
+
+        parts = time.split(":");
+        minutes = Integer.parseInt(parts[0]);
+        secondParts = parts[1].split("\\.");
+        seconds = Integer.parseInt(secondParts[0]);
+        millis = Integer.parseInt(secondParts[1]);
 
         return (minutes * 60 * 1000L) + (seconds * 1000L) + millis;
     }

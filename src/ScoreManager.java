@@ -1,173 +1,171 @@
 //ICS Summative - Tetris by Richard Xiong & Eric Ma
 //Beta Program Submission
 //2025-01-09
-//ScoreScreen Class - Displays the final score or time, allows the player to enter their username, and provides buttons to restart the game or return to the main menu.
+//ScoreManager Class - Handles saving, loading, and sorting high scores for different game modes, storing them in separate files and maintaining a maximum number of high scores.
 
-import javax.swing.*;
-import java.awt.*;
+import java.io.*;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
-public class ScoreScreen extends JPanel {
-    private JLabel timeLabel;
-    private JButton againButton;
-    private JButton menuButton;
-    private JTextField usernameField;
+public class ScoreManager {
+    private static final String SPRINT_SCORES_FILE = "sprint_scores.txt"; // File for sprint game mode scores
+    private static final String TIME_TRIAL_SCORES_FILE = "timetrial_scores.txt"; // File for time trial game mode scores
+    private static final String CHALLENGE_SCORES_FILE = "challenge_scores.txt"; // File for challenge game mode scores
+    private static final int MAX_SCORES = 10; // Max number of high scores to store
 
-    public ScoreScreen(GamePanel gamePanel, String result, String previousState, boolean isHighScore) {
-        JPanel containerPanel, usernamePanel, buttonsPanel;
-        JLabel titleLabel, usernameLabel;
-        String title;
+    // Sorting variables for comparing scores
+    private String[] aParts, bParts;
+    private long aMillis, bMillis;
+    private int scoreA, scoreB;
 
-        SoundManager.playMusic("music/scorescreen.wav");
+    // Method to save a new score for a specific game mode
+    public void saveScore(String gameMode, String score, String username) {
+        String fileName;
+        List<String> scores = new ArrayList<>();
+        // Data variables
+        String timestamp, entry;
 
-        setLayout(new GridBagLayout()); // Center everything
-        setBackground(Color.BLACK);
+        fileName = getFileNameForMode(gameMode); // Get the appropriate file name based on game mode
+        scores = loadScores(fileName); // Load current scores from the file
 
-        // Main container
-        containerPanel = new JPanel();
-        containerPanel.setLayout(new GridLayout(4,1,0, 10));
-        containerPanel.setBackground(Color.BLACK);
-        containerPanel.setPreferredSize(new Dimension(400, 250)); 
+        // If the username is empty, set it to "Anonymous"
+        if (username.equals("")){
+            username = "Anonymous";
+        }
 
-        // Title label
+        timestamp = new SimpleDateFormat("yyyy-MM-dd").format(new Date()); // Get the current date
+        entry = score + "," + username + "," + timestamp; // Combine the score, username, and timestamp into a single entry
+
+        scores.add(entry); // Add the new score entry
+
+        // Sort the scores list based on the game mode (either by time or score)
+        Collections.sort(scores, (a, b) -> {
+            aParts = a.split(",");
+            bParts = b.split(",");
+
+            if (gameMode.equals("GAME_SPRINT")) {
+                // For sprint game mode, compare by time (in milliseconds)
+                aMillis = parseTimeToMillis(aParts[0]);
+                bMillis = parseTimeToMillis(bParts[0]);
+                return Long.compare(aMillis, bMillis); // Return comparison based on time
+            } else {
+                // For other game modes, compare by score (higher is better)
+                scoreA = Integer.parseInt(aParts[0].replace(",", ""));
+                scoreB = Integer.parseInt(bParts[0].replace(",", ""));
+                return Integer.compare(scoreB, scoreA); // Return comparison based on score
+            }
+        });
+
+        // Ensure only the top MAX_SCORES scores are kept
+        if (scores.size() > MAX_SCORES) {
+            scores = scores.subList(0, MAX_SCORES); // Trim the list to the top scores
+        }
+
+        // Write the updated scores back to the file
+        try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
+            for (String s : scores) {
+                writer.println(s); // Write each score entry
+            }
+        } catch (IOException e) {
+            System.err.println("Error saving scores: " + e.getMessage()); // Handle any errors during file writing
+        }
+    }
+
+    // Method to get the list of scores for a specific game mode
+    public List<String> getScores(String gameMode) {
+        return loadScores(getFileNameForMode(gameMode)); // Load the scores from the appropriate file
+    }
+
+    // Method to get a specific component (score, username, date) of the nth score entry
+    public String getEntryComponent(String gameMode, int nthScore, String component) {
+        List<String> scores = new ArrayList<>();
+        String entry;
+        String [] parts;
+
+        scores = getScores(gameMode); // Get the scores for the game mode
+        if (scores.isEmpty() || nthScore < 1 || nthScore > scores.size()) {
+            return "---"; // Return "---" if the score list is empty or nthScore is out of bounds
+        }
+
+        entry = scores.get(nthScore - 1); // Get the nth score entry
+        parts = entry.split(","); // Split the entry into its components (score, username, date)
+
+        switch (component.toLowerCase()) {
+            case "score":
+                return parts[0]; // Return the score part of the entry
+            case "username":
+                return parts[1]; // Return the username part of the entry
+            case "date":
+                return parts[2]; // Return the date part of the entry
+            default:
+                throw new IllegalArgumentException("Invalid component: " + component); // Handle invalid component requests
+        }
+    }
+
+    // Method to check if a score qualifies as a high score
+    public boolean isHighScore(String result, String previousState) {
+        List<String> scores = new ArrayList<>();
+        String worstScore;
+        int newScoreValue, worstScoreValue;
+
+        scores = getScores(previousState); // Get the current scores for the game mode
+        if (scores.size() < MAX_SCORES) {
+            return true; // If there are fewer than MAX_SCORES, the new score qualifies
+        }
+        worstScore = scores.get(scores.size() - 1).split(",")[0]; // Get the worst (lowest) score
+
         if (previousState.equals("GAME_SPRINT")) {
-            title = "FINAL TIME";
+            // For sprint game mode, compare by time (lower time is better)
+            return parseTimeToMillis(result) < parseTimeToMillis(worstScore); 
         } else {
-            title = "SCORE";
+            // For other game modes, compare by score (higher score is better)
+            newScoreValue = Integer.parseInt(result.replace(",", ""));
+            worstScoreValue = Integer.parseInt(worstScore.replace(",", ""));
+            return newScoreValue > worstScoreValue;
         }
+    }
 
-        titleLabel = new JLabel(title);
-        titleLabel.setFont(new Font("Monospaced", Font.BOLD, 36));
-        titleLabel.setForeground(Color.BLUE);
-        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+    // Method to load scores from a file
+    private List<String> loadScores(String fileName) {
+        List<String> scores = new ArrayList<>();
+        String line;
 
-        // Time label
-        timeLabel = new JLabel(result);
-        timeLabel.setFont(new Font("Monospaced", Font.BOLD, 48));
-        timeLabel.setForeground(Color.RED);
-        timeLabel.setHorizontalAlignment(SwingConstants.CENTER);
-
-        // Username input panel
-        usernamePanel = new JPanel();
-        usernamePanel.setLayout(new BorderLayout());
-        usernamePanel.setBackground(Color.BLACK);
-
-        usernameLabel = new JLabel("ENTER USERNAME:");
-        usernameLabel.setFont(new Font("Arial", Font.BOLD, 20));
-        usernameLabel.setForeground(Color.WHITE);
-        usernameLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        usernameLabel.setBorder(BorderFactory.createEmptyBorder(5,0, 15,0));
-
-        usernameField = new JTextField();
-        usernameField.setHorizontalAlignment(SwingConstants.CENTER);
-        usernameField.setColumns(10); // Sets the width in terms of characters
-        usernameField.setFont(new Font("Arial", Font.PLAIN, 25));        
-        usernameField.setPreferredSize(new Dimension(200, 100));
-
-        usernamePanel.add(usernameLabel, BorderLayout.NORTH);
-        usernamePanel.add(usernameField, BorderLayout.CENTER);
-
-        // Buttons panel
-        buttonsPanel = new JPanel();
-        buttonsPanel.setLayout(new GridLayout(1, 2, 20, 0)); // Horizontal layout with spacing
-        buttonsPanel.setBackground(Color.BLACK);
-        usernameLabel.setBorder(BorderFactory.createEmptyBorder(0,0,0,0));
-
-
-        // Create buttons
-        againButton = createMenuButton("AGAIN");
-        menuButton = createMenuButton("MENU");
-
-        // Add buttons to panel
-        buttonsPanel.add(againButton);
-        buttonsPanel.add(menuButton);
-
-        againButton.addActionListener(e -> {
-            gamePanel.returntoGame();
-            gamePanel.restartGame();
-            if(isHighScore){
-                gamePanel.saveHighScore(previousState, result, usernameField.getText());
+        try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
+            while ((line = reader.readLine()) != null) {
+                scores.add(line.trim()); // Read each line (score entry) and add to the list
             }
-            if(previousState.equals("GAME_SPRINT")){
-                SoundManager.playMusic("music/sprint.wav");
-            } else if (previousState.equals("GAME_TIMETRIAL")) {
-                SoundManager.playMusic("music/blitz.wav");
-            } else if (previousState.equals("GAME_CHALLENGE")) {
-                SoundManager.playMusic("music/challenge.wav");
-            } else if (previousState.equals("GAME_PRACTICE")) {
-                SoundManager.playMusic("music/practice.wav");
-            }
-        });
-        menuButton.addActionListener(e -> {
-            gamePanel.returntoMenu();
-            if(isHighScore){
-                gamePanel.saveHighScore(previousState, result, usernameField.getText());
-            }
-            SoundManager.playMusic("music/theme.wav");
-
-        });
-
-        // Add components to container panel
-        containerPanel.add(titleLabel);
-        containerPanel.add(timeLabel);
-        if(isHighScore){
-            containerPanel.add(usernamePanel);
+        } catch (IOException e) {
+            return scores; // If there's an error reading the file, return the empty list
         }
-        containerPanel.add(buttonsPanel);
-
-
-        // Add container to main panel
-        add(containerPanel);
+        return scores; // Return the list of scores
     }
 
-    // Method to create button
-    private JButton createMenuButton(String text) {
-        JButton button = new JButton(text);
-        
-        button.setFocusPainted(false);
-        button.setFont(new Font("Arial", Font.BOLD, 18));
-        button.setBackground(Color.WHITE);
-        button.setForeground(Color.BLACK);
-        button.setPreferredSize(new Dimension(150, 50));
-        button.setOpaque(true);
-        button.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
-
-        // Mouse hover effect
-        button.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(Color.DARK_GRAY);
-                button.setForeground(Color.WHITE);
-            }
-
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(Color.WHITE);
-                button.setForeground(Color.BLACK);
-            }
-
-            public void mouseReleased(java.awt.event.MouseEvent evt) {
-                button.setBackground(Color.DARK_GRAY);
-            }
-        });
-
-        return button;
+    // Method to get the file name based on the game mode
+    private String getFileNameForMode(String gameMode) {
+        switch (gameMode) {
+            case "GAME_SPRINT":
+                return SPRINT_SCORES_FILE;
+            case "GAME_TIMETRIAL":
+                return TIME_TRIAL_SCORES_FILE;
+            case "GAME_CHALLENGE":
+                return CHALLENGE_SCORES_FILE;
+            default:
+                throw new IllegalArgumentException("Invalid game mode: " + gameMode); // Handle invalid game mode requests
+        }
     }
 
-    // Accessor methods for buttons
-    public JButton getAgainButton() {
-        return againButton;
-    }
+    // Method to convert a time string in the format "MM:SS.MMM" to milliseconds
+    public long parseTimeToMillis(String time) {
+        int minutes, seconds, millis;
+        String[] parts, secondParts;
 
-    public JButton getMenuButton() {
-        return menuButton;
-    }
+        parts = time.split(":"); // Split time into minutes and seconds
+        minutes = Integer.parseInt(parts[0]);
+        secondParts = parts[1].split("\\."); // Split seconds into seconds and milliseconds
+        seconds = Integer.parseInt(secondParts[0]);
+        millis = Integer.parseInt(secondParts[1]);
 
-    public String getUsername() {
-        return usernameField.getText();
-    }
-
-    // Reset button appearance
-    public void resetButtonAppearance(JButton button) {
-        button.setBackground(new Color(255, 255, 255, 200));
-        button.setForeground(Color.BLACK);
-        button.setFont(button.getFont().deriveFont(12f));
+        // Return the total time in milliseconds
+        return (minutes * 60 * 1000L) + (seconds * 1000L) + millis;
     }
 }

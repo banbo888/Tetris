@@ -7,7 +7,6 @@ import java.util.Random;
 public class PieceBagGenerator {
     private List<Integer> bag = new ArrayList<>();
     private Random random = new Random();
-
     private static final Color[] COLORS = {
         Color.CYAN,    // I
         Color.MAGENTA, // T
@@ -34,10 +33,13 @@ public class PieceBagGenerator {
     }
 
     public Tetromino getNextPiece() {
+        int index;
+
         if (bag.isEmpty()) {
             refillBag();
         }
-        int index = bag.remove(0);
+        index = bag.remove(0);
+
         return new Tetromino(index, COLORS[index]);
     }
 }

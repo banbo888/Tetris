@@ -8,26 +8,29 @@ public class ScoreScreen extends JPanel {
     private JTextField usernameField;
 
     public ScoreScreen(GamePanel gamePanel, String result, String previousState, boolean isHighScore) {
-
+        JPanel containerPanel, usernamePanel, buttonsPanel;
+        JLabel titleLabel, usernameLabel;
         String title;
+
+        SoundManager.playMusic("music/scorescreen.wav");
 
         setLayout(new GridBagLayout()); // Center everything
         setBackground(Color.BLACK);
 
         // Main container
-        JPanel containerPanel = new JPanel();
+        containerPanel = new JPanel();
         containerPanel.setLayout(new GridLayout(4,1,0, 10));
         containerPanel.setBackground(Color.BLACK);
         containerPanel.setPreferredSize(new Dimension(400, 250)); 
 
         // Title label
-        if (previousState == "GAME_SPRINT") {
+        if (previousState.equals("GAME_SPRINT")) {
             title = "FINAL TIME";
         } else {
             title = "SCORE";
         }
 
-        JLabel titleLabel = new JLabel(title);
+        titleLabel = new JLabel(title);
         titleLabel.setFont(new Font("Monospaced", Font.BOLD, 36));
         titleLabel.setForeground(Color.BLUE);
         titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
@@ -39,11 +42,11 @@ public class ScoreScreen extends JPanel {
         timeLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         // Username input panel
-        JPanel usernamePanel = new JPanel();
+        usernamePanel = new JPanel();
         usernamePanel.setLayout(new BorderLayout());
         usernamePanel.setBackground(Color.BLACK);
 
-        JLabel usernameLabel = new JLabel("ENTER USERNAME:");
+        usernameLabel = new JLabel("ENTER USERNAME:");
         usernameLabel.setFont(new Font("Arial", Font.BOLD, 20));
         usernameLabel.setForeground(Color.WHITE);
         usernameLabel.setHorizontalAlignment(SwingConstants.CENTER);
@@ -59,7 +62,7 @@ public class ScoreScreen extends JPanel {
         usernamePanel.add(usernameField, BorderLayout.CENTER);
 
         // Buttons panel
-        JPanel buttonsPanel = new JPanel();
+        buttonsPanel = new JPanel();
         buttonsPanel.setLayout(new GridLayout(1, 2, 20, 0)); // Horizontal layout with spacing
         buttonsPanel.setBackground(Color.BLACK);
         usernameLabel.setBorder(BorderFactory.createEmptyBorder(0,0,0,0));
@@ -79,12 +82,23 @@ public class ScoreScreen extends JPanel {
             if(isHighScore){
                 gamePanel.saveHighScore(previousState, result, usernameField.getText());
             }
+            if(previousState.equals("GAME_SPRINT")){
+                SoundManager.playMusic("music/sprint.wav");
+            } else if (previousState.equals("GAME_TIMETRIAL")) {
+                SoundManager.playMusic("music/blitz.wav");
+            } else if (previousState.equals("GAME_CHALLENGE")) {
+                SoundManager.playMusic("music/challenge.wav");
+            } else if (previousState.equals("GAME_PRACTICE")) {
+                SoundManager.playMusic("music/practice.wav");
+            }
         });
         menuButton.addActionListener(e -> {
             gamePanel.returntoMenu();
             if(isHighScore){
                 gamePanel.saveHighScore(previousState, result, usernameField.getText());
             }
+            SoundManager.playMusic("music/theme.wav");
+
         });
 
         // Add components to container panel
@@ -102,6 +116,7 @@ public class ScoreScreen extends JPanel {
 
     private JButton createMenuButton(String text) {
         JButton button = new JButton(text);
+        
         button.setFocusPainted(false);
         button.setFont(new Font("Arial", Font.BOLD, 18));
         button.setBackground(Color.WHITE);

@@ -16,8 +16,8 @@ public class SettingsManager {
         this.arr = 1;
         this.das = 4;
         this.sdf = 1000;
-        this.musicVolume = 0;
-        this.sfxVolume = 75;
+        this.musicVolume = 50;
+        this.sfxVolume = 50;
         this.audioEnabled = true;
         this.gridVisibility = 50;
         this.ghostVisibility = 50;

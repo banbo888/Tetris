@@ -18,8 +18,8 @@ public class PieceBagGenerator {
         Color.YELLOW,  // O piece
         Color.RED,     // Z piece
         Color.GREEN,   // S piece
-        Color.BLUE,    // L piece
-        Color.ORANGE   // J piece
+        Color.BLUE,    // J piece
+        Color.ORANGE   // L piece
     };
 
     // Constructor that initializes the piece bag with a shuffled set of pieces

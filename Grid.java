@@ -207,10 +207,12 @@ public class Grid {
     }
 
     public void clearCell(int row, int col) {
-        // Clears a specific cell on the grid (sets it to empty and black)
-        if (row >= 0 && row < ROWS && col >= 0 && col < COLS) { // Ensure within grid bounds
-            grid[row][col] = 0; // Mark the cell as empty
-            colors[row][col] = Color.BLACK; // Set the cell color to black
+        if (row < 0) {
+            // Handle buffer grid
+            bufferGrid[row + BUFFER_ROWS][col] = 0;
+        } else {
+            // Handle main grid
+            grid[row][col] = 0;
         }
     }
 
@@ -233,15 +235,26 @@ public class Grid {
     }
 
     // Method to check if the top row has any occupied cells
-    public boolean isTopRowOccupied() {
-        for (int col = 0; col < COLS; col++) {
-            if (grid[0][col] != 0) { // Assuming 0 represents an empty cell
-                return true; // Return true if any cell in the top row is occupied
+    public boolean isRowOccupied(int row) {
+        if (row < 0) {
+            // Handle buffer grid
+            for (int col = 0; col < COLS; col++) {
+                if (bufferGrid[row + BUFFER_ROWS][col] != 0) { // Assuming 0 represents an empty cell
+                    System.out.println("buffer row occupied");
+                    return true; // Return true if any cell in the buffer row is occupied
+                }
+            }
+        } else {
+            // Handle main grid
+            for (int col = 0; col < COLS; col++) {
+                if (grid[row][col] != 0) { // Assuming 0 represents an empty cell
+                    System.out.println("main grid row occupied");
+                    return true; // Return true if any cell in the main grid row is occupied
+                }
             }
         }
-        return false; // Return false if no cells in the top row are occupied
+        return false; // Return false if no cells in the row are occupied
     }
-
     public void draw(Graphics g, int offsetX, int offsetY) {
         // Draw buffer grid blocks (if they exist)
         for (int row = 0; row < BUFFER_ROWS; row++) {

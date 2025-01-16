@@ -1,400 +1,1273 @@
 //ICS Summative - Tetris by Richard Xiong & Eric Ma
 //Beta Program Submission
 //2025-01-09
-//GameInterface Class - Manages the display and updates of game-related information, including the current piece, held piece, upcoming pieces, game stats, action texts, and power-up notifications.
+//GamePanel Class - Manages all of the logic in the game (i.e. the loop, the thread, as well as general mechanisms of tetris like the menu, game phase, etc.)
 
 import java.awt.*;
+import java.awt.event.*;
+import java.util.LinkedList;
 import java.util.Queue;
-import javax.swing.Timer;
+import javax.swing.*;
 
-public class GameInterface {
-    private static final int BLOCK_SIZE = Tetromino.BLOCK_SIZE; // Block size from Tetromino class
-    private int TOP_PANEL_HEIGHT; // Height of the top panel for game stats
-    private int GRID_OFFSET_X; // Horizontal offset for grid positioning
-    private Queue<Tetromino> pieceQueue; // Queue to hold upcoming tetromino pieces
-    private Tetromino heldPiece; // The piece held by the player
-    private Tetromino currentPiece; // The current piece on the game grid
-    private int pieceX; // Current X position of the piece on the grid
-    private int pieceY; // Current Y position of the piece on the grid
-    private String gameState; // Current state of the game (e.g., challenge, sprint, etc.)
-    private boolean isCountingDown; // Flag to track if the game is in countdown mode
+public class GamePanel extends JPanel implements Runnable, KeyListener {
 
-    // Action text for displaying current game actions (e.g., combos, power-ups)
-    private String actionText = "";
-    private String tSpinText = "";
-    private String pcText = "";
-    private String backToBackText = "";
-    private String comboString = "";
+    //Variable Declaration
+    
+    public static final int GAME_WIDTH = 300;  // Width of main grid
+    private static final int TOP_PANEL_HEIGHT = 100; // Adjust as needed
+    private static final int BOTTOM_PANEL_HEIGHT = 50; // Adjust as needed 
+    public static final int GAME_HEIGHT = 600 + TOP_PANEL_HEIGHT + BOTTOM_PANEL_HEIGHT; // Original height plus new panels
+    private static final int BLOCK_SIZE = Tetromino.BLOCK_SIZE;
+    private static final int GRID_COLS = GAME_WIDTH / BLOCK_SIZE;
+    private static final int SIDE_PANEL_WIDTH = 300; // Width of side panels
+    private static final int GRID_OFFSET_X = SIDE_PANEL_WIDTH; // Offset for grid drawing and calculations
 
-    // Power-up related fields
-    private String powerUpText = ""; // Text for power-up notifications
-    private boolean showPowerUpText = false; // Flag to show power-up text
-    private long powerUpTextStartTime; // Start time of the power-up text
-    private static final long POWER_UP_TEXT_DURATION = 3000; // Duration for showing power-up text (3 seconds)
-    private String powerUpActiveText = ""; // Active power-up text (e.g., Slow Mode, Line Destroyer)
-    private float powerUpFadeAlpha = 1.0f; // Fade effect alpha for power-up text
-    private Timer powerUpFadeTimer; // Timer to control the fade effect of power-up text
+    // Game Piece variables
+    private Queue<Tetromino> pieceQueue;
+    private int pieceX = GRID_COLS / 2 - 2;
+    private int pieceY = 0;
+    private boolean softDropActive = false;
+    private boolean canHold = true;
 
-    // Fade effect fields for action text
-    private Timer fadeTimer; // Timer for action text fade effect
-    private float fadeAlpha = 0.0f; // Alpha value for fading the action text
-    private static final int FADE_INTERVAL = 75; // Interval for fade effect
+    // Softdrop variables
+    private int lockDelayTime;
+    private int currentLockDelayTime = 0;
+    private int movementCounter = 0;
+    private static final int MAX_MOVEMENTS = 20;
+    private boolean isLockDelayActive = false;
 
-    // Constructor to initialize grid offset and top panel height
-    public GameInterface(int gridOffsetX, int topPanelHeight) {
-        this.GRID_OFFSET_X = gridOffsetX;
-        this.TOP_PANEL_HEIGHT = topPanelHeight;
+    // Handling settings variables (Delayed Auto Shift, Auto Repeat Rate, Soft Drop Factor) 
+    private int dasDelay; // Delay before auto-shift starts (in frames, 1-20)
+    private int arrDelay; // Auto-repeat rate (in frames, 1-5)
+    private int softdropFactor; // Soft drop speed factor (1-100)
+    private int dasCharge = 0;
+    private boolean leftKeyPressed = false;
+    private boolean rightKeyPressed = false;
+    private int lastKeyPressed = 0; // 0: None, -1: Left, 1: Right
 
-        // Initialize the fade timer used for action text
-        fadeTimer = new Timer(FADE_INTERVAL, e -> {
-            fadeAlpha -= 0.02f; // Decrease alpha for fade effect
-            if (fadeAlpha <= 0) {
-                fadeAlpha = 0; // Ensure alpha doesn't go below 0
-                actionText = ""; // Clear action text when fade completes
-                ((Timer) e.getSource()).stop(); // Stop the fade timer
-            }
+    // Video and Audio settings variables
+    private boolean audioEnabled;
+    private int gridVisibility;
+    private int ghostVisibility;
+    private boolean actionTextOn;
+
+    // Countdown timer variables
+    private boolean isCountingdown = false;
+    private long countdownStartTime;
+    private int lastCountdownIndex = -1;
+    private static final String[] COUNTDOWN_TEXT = {"GO!", "SET", "READY"};
+
+    // Line clear logic variable (stores line clears, back to back, combo, and Tspin stats)
+    private int currentLinesCleared = 0; // Check how many lines were cleared in a move
+    private int totalLinesCleared = 0;
+    private int backToBackCounter = 0; // Check for back-to-back (quads and Tspins)
+    private int comboCounter = 0;
+    private boolean lastKeyValidRotation = false; // Check if the last key pressed was a rotation
+    private int score = 0;
+    private int harddropDistance = 0;
+    private String result = "";
+    
+    //Gravity logic
+    private int level;
+    private double gravityFactor;
+
+    // Score system
+    private boolean isHighScore;
+
+    // Powerups System
+    private boolean powerUpUsed = false;
+    private boolean powerUpAvailable = false;
+    private boolean powerUpStored = false;
+    private boolean slowTimeActive = false;
+    private boolean lineDestroyerActive = false;
+    private long slowTimeStarted = 0;
+    private boolean slowTimeAvailable = false;
+    private boolean lineDestroyerAvailable = false;
+    private static final long SLOW_TIME_DURATION = 10000; // 3 seconds in milliseconds
+    private long lastPowerUpTime;
+    private static final long POWER_UP_INTERVAL = 30000;
+
+    Thread gameThread;
+    Tetromino currentPiece;
+    Tetromino heldPiece;
+    Grid grid;
+    PieceBagGenerator bagGenerator;
+    GameState currentState = GameState.MENU; // Current state of the game
+    GameState previousState;
+    MenuScreen menu;
+    ExitScreen pauseScreen;
+    ExitScreen loseScreen;
+    ScoreScreen scoreScreen;
+    Timer gameTimer;
+    GameInterface gameInterface;
+    SettingsManager settings;
+    ScoreManager scoreManager;
+    SoundManager sound;
+
+
+    // Enum for game states
+    public enum GameState {
+        MENU, // Main menu state
+        GAME_SPRINT,      // Active game state (Sprint)
+        GAME_TIMETRIAL,  // Active game state (Time Trial)
+        GAME_PRACTICE,  // Active game state (Practice)
+        GAME_CHALLENGE, // Active game state (Challenge)
+        SCORE_SCREEN, // Win screen state
+        LOSE_SCREEN, // Lose screen state
+        PAUSE       // Pause state
+
+    }
+
+    //GamePanel Constructor
+    public GamePanel() {
+        menu = new MenuScreen(this);
+        pauseScreen = new ExitScreen(this, "EXIT TO MAIN MENU?", "RESUME", "EXIT TO MAIN MENU", "PAUSE");
+        loseScreen = new ExitScreen(this, "GAME OVER", "TRY AGAIN", "EXIT TO MAIN MENU", "LOSE");
+        scoreManager = new ScoreManager();
+        scoreScreen = new ScoreScreen(this, result, currentState.toString(), isHighScore);
+        grid = new Grid();
+        settings = new SettingsManager();
+        gameTimer = new Timer();
+        pieceQueue = new LinkedList<>();
+        bagGenerator = new PieceBagGenerator();
+        gameInterface = new GameInterface(GRID_OFFSET_X, TOP_PANEL_HEIGHT);
+        initializePieceQueue();
+        updateSettings(settings);
+
+        currentPiece = pieceQueue.poll();
+
+        this.setFocusable(true);
+        this.addKeyListener(this);
+        this.setPreferredSize(new Dimension(
+            GAME_WIDTH + (2 * SIDE_PANEL_WIDTH), 
+            GAME_HEIGHT
+        ));        
+        this.setBackground(Color.BLACK); 
+        this.setDoubleBuffered(true);
+        this.setLayout(new BorderLayout());
+        add(menu, BorderLayout.CENTER);
+
+
+        gameThread = new Thread(this);
+        gameThread.start();
+        
+        SoundManager.playMusic("music/theme.wav");
+
+        // Action Listeners for Pause Screen
+        pauseScreen.getResumeButton().addActionListener(e -> {
+            currentState = previousState; // resume the game
+            remove(pauseScreen);
+            revalidate();
+            repaint();
         });
-        fadeTimer.setRepeats(true); // Ensure the fade timer repeats
 
-        // Initialize power-up fade timer
-        powerUpFadeTimer = new Timer(FADE_INTERVAL, e -> {
-            powerUpFadeAlpha -= 0.02f; // Decrease alpha for power-up fade effect
-            if (powerUpFadeAlpha <= 0) {
-                powerUpFadeAlpha = 0; // Ensure alpha doesn't go below 0
-                showPowerUpText = false; // Hide power-up text when fade completes
-                ((Timer) e.getSource()).stop(); // Stop the power-up fade timer
-            }
+        pauseScreen.getMainMenuButton().addActionListener(e -> {
+            currentState = GameState.MENU;
+            SoundManager.playMusic("music/theme.wav");
+
+            menu.resetToMainMenu(null);
+            remove(pauseScreen);
+            revalidate();
+            repaint();
         });
-        powerUpFadeTimer.setRepeats(true); // Ensure the power-up fade timer repeats
+
+        // Action Listeners for Lose Screen
+        loseScreen.getResumeButton().addActionListener(e -> {
+            currentState = previousState;
+            restartGame();
+            remove(loseScreen);
+            revalidate();
+            repaint();
+            loseScreen.resetButtonAppearance(loseScreen.getMainMenuButton());
+        });
+
+        loseScreen.getMainMenuButton().addActionListener(e -> {
+            currentState = GameState.MENU;
+            SoundManager.playMusic("music/theme.wav");
+
+            menu.resetToMainMenu(null);
+            remove(loseScreen);
+            revalidate();
+            repaint();
+            loseScreen.resetButtonAppearance(loseScreen.getMainMenuButton());
+        });
     }
 
-    // Method to trigger a power-up text display based on the power-up type
-    public void triggerPowerUpText(int powerUp) {
-        showPowerUpText = true; // Show power-up text
-        powerUpTextStartTime = System.currentTimeMillis(); // Record the start time
-        powerUpFadeAlpha = 1.0f; // Reset fade alpha to full opacity
-        powerUpFadeTimer.restart(); // Restart the fade timer
-        if (powerUp == 1) {
-            powerUpActiveText = "SLOW MODE ACTIVATED!"; // Set text for slow mode power-up
-        } else if (powerUp == 2) {
-            powerUpActiveText = "LINE DESTROYER ACTIVATED!"; // Set text for line destroyer power-up
-        }
-    }
-
-    // Method to update the power-up availability text
-    public void powerUpAvailable(int powerUp) {
-        if (powerUp == 0) {
-            powerUpText = ""; // Clear power-up text if no power-up is available
-        } else if (powerUp == 1) {
-            powerUpText = "SLOW TIME:"; // Display text for slow time power-up
-        } else if (powerUp == 2) {
-            powerUpText = "DESTROY LINES:"; // Display text for line destroyer power-up
-        }
-    }
-
-    // Method to draw game stats (time, lines left, score, etc.) on the screen
-    public void drawStats(Graphics g, String timeElapsedFormatted, String timeRemaining, 
-                          long timeElapsedMiliseconds, int piecesPlaced, int linesCleared, int score, int level, 
-                          boolean powerUpAvailable, boolean powerUpUsed) {
-        // Declare variables to manage displayed stats
-        String timeString;
-        String mainTime;
-        String milliseconds;
-        int linesRemaining;
-        double piecePerSecond;
-        double timeInSeconds;
-
-        // Positioning variables
-        int posX = 100;
-        int posY = 625; // Position to align with held pieces
-        FontMetrics fmMain, fmPiecesPlaced;
-        int mainTimeWidth, piecesCounterWidth;
-
-        // Handle countdown state based on game state
-        if (!isCountingDown) {
-            if (gameState.equals("GAME_SPRINT")) {
-                timeString = timeElapsedFormatted; // Use formatted elapsed time for sprint
-            } else if (gameState.equals("GAME_TIMETRIAL")) {
-                timeString = timeRemaining; // Use remaining time for time trial
-            } else {
-                timeString = timeElapsedFormatted; // Use formatted elapsed time for other game states
-            }
-        } else {
-            // If countdown is active, show default countdown values
-            if (gameState.equals("GAME_SPRINT")) {
-                timeString = "00:00.000"; // Show 0 for sprint mode
-            } else if (gameState.equals("GAME_TIMETRIAL")) {
-                timeString = "02:00.000"; // Show 2 minutes for time trial mode
-            } else {
-                timeString = "00:00.000"; // Show 0 for other game modes
-            }
-        }
-
-        // Calculates lines remaining based on cleared lines
-        if (linesCleared <= 40) {
-            linesRemaining = 40 - linesCleared; // Lines left in sprint mode
-        } else {
-            linesRemaining = 0; // No lines remaining if cleared more than 40
-        }
-
-        // Calculates pieces placed per second
-        timeInSeconds = timeElapsedMiliseconds / 1000.0;
-        if (!isCountingDown) {
-            piecePerSecond = piecesPlaced / timeInSeconds; // Pieces placed per second during active game
-        } else {
-            piecePerSecond = 0; // No pieces placed during countdown
-        }
-        
-        // Split time string into main time and milliseconds parts
-        mainTime = timeString.substring(0, timeString.lastIndexOf('.') + 1); // Extract main time part (e.g., "00:00.")
-        milliseconds = timeString.substring(timeString.lastIndexOf('.') + 1); // Extract milliseconds part (e.g., "000")
-    
-        // Draw "TIME:" label
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Smaller font for the label
-        g.drawString("TIME:", posX, posY - 40);
-    
-        // Draw the main time part
-        g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Larger font for main time
-        fmMain = g.getFontMetrics();
-        mainTimeWidth = fmMain.stringWidth(mainTime); // Get width of main time string
-        g.drawString(mainTime, posX, posY);
-    
-        // Draw the milliseconds part
-        g.setFont(new Font("SansSerif", Font.PLAIN, 25)); // Smaller font for milliseconds
-        g.drawString(milliseconds, posX + mainTimeWidth, posY); // Offset by the width of main time
-
-        // Display power-up availability and usage instructions
-        if (gameState.equals("GAME_CHALLENGE") && powerUpAvailable && !powerUpUsed) {
-            g.setFont(new Font("SansSerif", Font.BOLD, 25));
-            g.setColor(Color.GREEN);
-            g.drawString(powerUpText, GRID_OFFSET_X + 300 + 30, posY - 40); // Display power-up text
-            g.setFont(new Font("SansSerif", Font.PLAIN, 20));
-            g.setColor(Color.WHITE);
-            g.drawString("Press V to activate", GRID_OFFSET_X + 300 + 30, posY); // Display activation hint
-        }
-
-        // Draw other game stats (e.g., lines left, score, level) based on the game state
-        if (gameState.equals("GAME_SPRINT")) {
-            g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Label font
-            g.drawString("LINES LEFT:", posX, posY - 140);
-            g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Value font
-            g.drawString(String.valueOf(linesRemaining), posX, posY - 95);
-        } else if (gameState.equals("GAME_TIMETRIAL") || gameState.equals("GAME_CHALLENGE") || gameState.equals("GAME_PRACTICE")) {
-            g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Label font
-            g.drawString("SCORE:", posX, posY - 140);
-            g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Value font
-            g.drawString(String.valueOf(score), posX, posY - 95);
-            if (gameState.equals("GAME_TIMETRIAL")) {
-                g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Label font
-                g.drawString("LEVEL:", GRID_OFFSET_X + 300 + 30, posY - 40);
-                g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Value font
-                g.drawString(String.valueOf(level), GRID_OFFSET_X + 300 + 30, posY); // Level counter
-            }
-        }
-
-        // Draw pieces placed and pieces per second statistics
-        g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Label font
-        g.drawString("PIECES:", posX, posY - 245);
-        g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Value font
-        fmPiecesPlaced = g.getFontMetrics();
-        piecesCounterWidth = fmPiecesPlaced.stringWidth(String.valueOf(piecesPlaced)); // Get width of pieces counter
-        g.drawString(String.valueOf(piecesPlaced), posX, posY - 195); // Display pieces placed
-        g.setFont(new Font("SansSerif", Font.PLAIN, 25)); // Font for pieces per second
-        g.drawString(String.format("%.2f", piecePerSecond) + "/S", posX + piecesCounterWidth + 20, posY - 195); // Display pieces per second
-    }
-
-    public void drawQueue(Graphics g) {
-        // Array declaration to hold the next pieces in the queue.
-        Tetromino[] piecesArray; 
-    
-        // Set up the starting positions and spacing for drawing the queue
-        int startX = GRID_OFFSET_X + 300 + 30; // Position for the right panel where the queue is drawn
-        int startY = 120; // Initial Y position for the first piece
-        int spacing = 85; // Vertical spacing between each queued piece
-        
-        // Draw the "NEXT" label indicating the upcoming pieces
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 25));
-        g.drawString("NEXT", startX, startY - 20);
-        
-        // Convert the pieceQueue to an array and draw each piece in the queue
-        piecesArray = pieceQueue.toArray(new Tetromino[0]);
-        for (int i = 0; i < piecesArray.length; i++) {
-            // For each piece in the queue, draw it at the calculated position
-            piecesArray[i].draw(g, startX, startY + (i * spacing));
-        }
-    }
-    
-    public void updateState(Queue<Tetromino> pieceQueue, Tetromino heldPiece, 
-                            Tetromino currentPiece, int pieceX, int pieceY, String gameState, boolean isCountingDown) {
-        // Update the game state with the new pieces and position details.
-        this.pieceQueue = pieceQueue;
-        this.heldPiece = heldPiece;
-        this.currentPiece = currentPiece;
-        this.pieceX = pieceX;
-        this.pieceY = pieceY;
-        this.gameState = gameState;
-        this.isCountingDown = isCountingDown;
-    }
-    
-    public void drawHeldPiece(Graphics g) {
-        // Defines the starting positions for drawing the held piece
-        int startX = 100; // Position for the left side panel
-        int startY = 120;
-    
-        // Draws the "HOLD" label to indicate the held piece area
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 25));
-        g.drawString("HOLD (C)", startX, startY - 20);
-    
-        // If a piece is held, draw it at the specified location
-        if (heldPiece != null) {
-            heldPiece.draw(g, startX, startY);
-        }
-    }
-    
-    public void drawGhostPiece(Graphics g, Grid grid, int ghostVisibility) {        
-        // Sets the initial Y position for the ghost piece to the current piece's position
-        int ghostY = pieceY; 
-        Graphics2D g2d = (Graphics2D) g.create();
-        
-        // Determine lowest valid position for the ghost piece by checking for collisions
-        while (!grid.checkCollision(currentPiece, pieceX, ghostY + 1)) {
-            ghostY++; // Move down until collision is detected
-        }
-        
-        // Set opacity for the ghost piece (transparent to indicate a 'ghost' appearance)
-        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, ghostVisibility / 100.0f));
-        
-        // Draw the ghost piece at its calculated position
-        currentPiece.draw(g2d, 
-            GRID_OFFSET_X + pieceX * BLOCK_SIZE, 
-            TOP_PANEL_HEIGHT + ghostY * BLOCK_SIZE
-        );
-        
-        g2d.dispose();
-    }
-    
-    public void triggerActionText(int linesCleared, boolean isTSpin, boolean isGridEmpty, int backToBackCounter, int comboCounter) {
-        // Determine action text based on lines cleared
-        switch (linesCleared) {
+    //Method to start game
+    public void startGame(int mode) {
+        //Handling 4 Gamemodes
+        switch (mode) {
             case 1:
-                actionText = "SINGLE";
+                currentState = GameState.GAME_SPRINT;
                 break;
             case 2:
-                actionText = "DOUBLE";
+                currentState = GameState.GAME_TIMETRIAL;
                 break;
             case 3:
-                actionText = "TRIPLE";
+                currentState = GameState.GAME_PRACTICE;
                 break;
             case 4:
-                actionText = "QUAD";
-                break;
-            default:
-                actionText = "";
+                currentState = GameState.GAME_CHALLENGE;
                 break;
         }
-    
-        // Handle T-spin text if T-spin was performed
-        if (isTSpin) {
-            tSpinText = "T-SPIN";
-        } else {
-            tSpinText = "";
-        }
-    
-        // Handle All Clear text if the grid is empty
-        if (isGridEmpty) {
-            pcText = "ALL CLEAR!";
-        } else {
-            pcText = "";
-        }
-    
-        // Handle back-to-back text for consecutive actions
-        if (backToBackCounter == 2) {
-            backToBackText = "B2B";
-        } else if (backToBackCounter > 2) {
-            backToBackText = "B2B x" + (backToBackCounter - 1);
-        } else {
-            backToBackText = "";
-        }
+        restartGame();
+        repaint();
         
-        // Handles combo text for multiple consecutive line clears
-        if (comboCounter >= 2) {
-            comboString = String.valueOf(comboCounter - 1) + " COMBO";
-        } else {
-            comboString = "";
+    }
+
+    //Method to start countdown (before user can play)
+    private void startCountdown() {
+        isCountingdown = true;
+        countdownStartTime = System.currentTimeMillis() - 1000; // Set to current time directly
+        repaint();
+    }
+
+    //Method to draw countdown via Graphics
+    private void drawCountdown(Graphics g) {
+        long currentTime, elapsedTime;
+        int displayIndex;
+        String countdownText;
+
+        // Formatting variables
+        FontMetrics fmCountdown;
+        Font originalFont, countdownFont;
+        int textWidth, textHeight;
+
+        originalFont = g.getFont();
+        countdownFont = new Font("Arial", Font.BOLD, 72);
+        g.setFont(countdownFont);
+        
+        // Calculate time elapsed and current display
+        currentTime = System.currentTimeMillis();
+        elapsedTime = currentTime - countdownStartTime;
+        displayIndex = (int) Math.max(0, Math.min(3, 3 - (elapsedTime / 1000)));
+        
+        // Only draw if within valid range (including GO!)
+        if (displayIndex >= 0 && displayIndex < COUNTDOWN_TEXT.length) {
+            // Draw semi-transparent background
+            g.setColor(new Color(0, 0, 0, 128));
+            g.fillRect(0, 0, getWidth(), getHeight());
+            
+            // Draw countdown text
+            countdownText = COUNTDOWN_TEXT[displayIndex];
+
+            fmCountdown = g.getFontMetrics();
+            textWidth = fmCountdown.stringWidth(countdownText);
+            textHeight = fmCountdown.getHeight();
+            
+            g.setColor(Color.WHITE);
+            g.drawString(countdownText, 
+                (getWidth() - textWidth) / 2,
+                (getHeight() - textHeight) / 2 + fmCountdown.getAscent()
+            );
         }
-    
-        // If action text exists, reset fade and start the fade timer for a smooth transition
-        if (!actionText.isEmpty()) {
-            fadeAlpha = 1.0f; // Reset the fade effect
-            fadeTimer.start(); // Start the fade timer to gradually reduce opacity
+
+        // Play sound effect for countdown
+        if (displayIndex != lastCountdownIndex) {
+            lastCountdownIndex = displayIndex;
+            switch (displayIndex) {
+                case 0:
+                    SoundManager.playSound("sfx/go.wav");
+                    break;
+                case 1:
+                    SoundManager.playSound("sfx/readyset.wav");
+                    break;
+                case 2:
+                    SoundManager.playSound("sfx/readyset.wav");
+                    break;
+                case 3:
+                    SoundManager.playSound("sfx/readyset.wav");
+                    break;
+            }
+        }
+
+        g.setFont(originalFont);
+        
+        // Check if countdown is complete
+        gameTimer.stop();
+        if (elapsedTime >= 4000) { // 4 seconds total duration
+            isCountingdown = false;
+            gameTimer.start(); // Start the game timer
         }
     }
-    
-    public void drawActionText(Graphics g) {
-        // Sets starting position for drawing the action text
-        int posX = 100;
-        int posY = 615;
+
+    //Method to restart game once game over or task complete
+    public void restartGame() {
+        startCountdown();
+
+        // Reset grid
+        grid = new Grid();
+
+        // Reset piece queue and generator
+        pieceQueue.clear();
+        bagGenerator = new PieceBagGenerator(); // Reset the bag generator
+        initializePieceQueue();
         
-        FontMetrics fmPowerUp;
-        int powerUpWidth;
+        // Reset held piece
+        heldPiece = null;
         
-        Graphics2D g2dAction = (Graphics2D) g.create();
-        Graphics2D g2dPowerUp = (Graphics2D) g.create();
-    
-        // Draw the regular action text (e.g., "SINGLE", "T-SPIN", etc.) with fading effect
-        if (fadeAlpha > 0 && actionText != null && !actionText.isEmpty()) {
-            g2dAction.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, fadeAlpha));
-            g2dAction.setFont(new Font("SansSerif", Font.BOLD, 35));
-            g2dAction.setColor(Color.WHITE);
-            g2dAction.drawString(actionText, posX, posY - 350);
-            
-            // Draw additional action details such as T-spin, All Clear, Back-to-Back, and Combo
-            g2dAction.setFont(new Font("SansSerif", Font.BOLD, 25));
-            g2dAction.setColor(Color.MAGENTA);
-            g2dAction.drawString(tSpinText, posX, posY - 390);
-            
-            g2dAction.setFont(new Font("SansSerif", Font.BOLD, 45));
-            g2dAction.setColor(new Color(255, 234, 0));
-            g2dAction.drawString(pcText, posX + 220, posY - 360);
-            
-            g2dAction.setFont(new Font("SansSerif", Font.BOLD, 30));
-            g2dAction.setColor(Color.CYAN);
-            g2dAction.drawString(backToBackText, posX, posY - 310);
-            
-            g2dAction.setFont(new Font("SansSerif", Font.BOLD, 30));
-            g2dAction.setColor(Color.YELLOW);
-            g2dAction.drawString(comboString, posX, posY - 270);
-            g2dAction.dispose();
+        // Reset piece position
+        pieceX = GRID_COLS / 2 - 2;
+        pieceY = 0;
+        
+        // Reset hold ability
+        canHold = true;
+
+        //Reset keys pressed
+        lastKeyPressed = 0;
+        
+        // Get first piece from queue
+        currentPiece = pieceQueue.poll();
+        spawnNewPiece();
+        
+        // Restart stats
+        grid.resetStats();
+        score = 0;
+        level = 0;
+        gravityFactor = 1;
+        backToBackCounter = 0;
+        totalLinesCleared = 0;
+        gameTimer.reset();  // Reset the timer
+        gameTimer.start();  // Restart the timer
+
+        // Store game mode
+        previousState = currentState;
+        powerUpAvailable = false;
+        powerUpUsed = false;
+        powerUpStored = false;
+        slowTimeActive = false;
+        lastPowerUpTime = System.currentTimeMillis(); // Reset the power-up timer when game restarts
+
+        // Repaint to update the display
+        repaint();
+    }
+    //Method to initialize piece queue (subsequent pieces the user will place)
+    private void initializePieceQueue() {
+        //Cycle through first bag
+        for(int i = 0; i < 6; i++){
+            bagGenerator.getNextPiece();
         }
+
+        for (int i = 0; i < 6; i++) { // Add all 7 pieces to the queue initially
+            pieceQueue.add(bagGenerator.getNextPiece());
+        }
+    }
+    //Method to add piece to the queue randomly via bagGenerator
+    private void addPieceToQueue() {
+        pieceQueue.add(bagGenerator.getNextPiece());
+    }
+
+    //Method to update settings of the game/controls
+    public void updateSettings(SettingsManager newSettings) {
+        this.settings = newSettings;
+        arrDelay = settings.getArr();
+        dasDelay = settings.getDas();
+        softdropFactor = settings.getSdf();
+        audioEnabled = settings.isAudioEnabled();
+        gridVisibility = settings.getGridVisibility();
+        ghostVisibility = settings.getGhostVisibility();
+        actionTextOn = settings.isActionTextOn();
+    }
+
+    //Paint method
+    public void paint(Graphics g) {
+        int gridDrawOffset;
+
+        super.paint(g);
+        if (currentState == GameState.MENU) {
+            menu.setVisible(true);
+            pauseScreen.setVisible(false);
+            loseScreen.setVisible(false);
+            scoreScreen.setVisible(false);
+        } 
+        else if (currentState == GameState.PAUSE) {
+            pauseScreen.setVisible(true);
+            menu.setVisible(false);
+            loseScreen.setVisible(false);
+            scoreScreen.setVisible(false);        
+        }
+        else if (currentState == GameState.LOSE_SCREEN){
+            loseScreen.setVisible(true);
+            menu.setVisible(false);
+            pauseScreen.setVisible(false);
+            scoreScreen.setVisible(false);        
+        }
+        else if (currentState == GameState.SCORE_SCREEN){
+            scoreScreen.setVisible(true);
+            menu.setVisible(false);
+            pauseScreen.setVisible(false);
+            loseScreen.setVisible(false);
+        }
+        else {
+            menu.setVisible(false);
+            pauseScreen.setVisible(false);
+            loseScreen.setVisible(false);
+            scoreScreen.setVisible(false);     
+
+            // Draw top panel
+            g.setColor(Color.BLACK);
+            g.fillRect(GRID_OFFSET_X, 0, GAME_WIDTH, TOP_PANEL_HEIGHT);
+            
+            // Draw bottom panel
+            g.setColor(Color.BLACK);
+            g.fillRect(GRID_OFFSET_X, GAME_HEIGHT - BOTTOM_PANEL_HEIGHT, GAME_WIDTH, BOTTOM_PANEL_HEIGHT);
+            
+            // Adjust grid drawing offset
+            gridDrawOffset = TOP_PANEL_HEIGHT;
+            
+            // Draw game grid with less visible lines
+            g.setColor(new Color(211, 211, 211, (int) (255 * (gridVisibility/100.0)))); // White with opactiy determined by user
+            for (int x = GRID_OFFSET_X; x <= GRID_OFFSET_X + GAME_WIDTH; x += BLOCK_SIZE) {
+                g.drawLine(x, gridDrawOffset, x, GAME_HEIGHT - BOTTOM_PANEL_HEIGHT);
+            }
+            for (int y = gridDrawOffset; y <= GAME_HEIGHT - BOTTOM_PANEL_HEIGHT; y += BLOCK_SIZE) {
+                g.drawLine(GRID_OFFSET_X, y, GRID_OFFSET_X + GAME_WIDTH, y);
+            }
     
-        // Draw power-up activation text if necessary
-        if (showPowerUpText) {
-            g2dPowerUp.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, powerUpFadeAlpha));
-            g2dPowerUp.setFont(new Font("SansSerif", Font.BOLD, 40)); // Increased font size
-            g2dPowerUp.setColor(new Color(0, 255, 255)); // Cyan color
-            fmPowerUp = g2dPowerUp.getFontMetrics();
-            powerUpWidth = fmPowerUp.stringWidth(powerUpActiveText);
+            // Adjust grid and piece drawing to account for top panel
+            grid.draw(g, GRID_OFFSET_X, gridDrawOffset);
+            currentPiece.draw(g, 
+                GRID_OFFSET_X + pieceX * BLOCK_SIZE, 
+                gridDrawOffset + pieceY * BLOCK_SIZE
+            );
+            
+            // Game Interface
+            gameInterface.updateState(pieceQueue, heldPiece, currentPiece, pieceX, pieceY, 
+            currentState.toString(), isCountingdown);
         
-            // Draw shadow for better visibility
-            g2dPowerUp.setColor(Color.BLACK);
-            g2dPowerUp.drawString(powerUpActiveText, 
-                GRID_OFFSET_X + (GamePanel.GAME_WIDTH - powerUpWidth) / 2 + 2,
-                posX + 52);
-        
-            // Draw the main text
-            g2dPowerUp.setColor(new Color(0, 255, 255)); // Cyan color
-            g2dPowerUp.drawString(powerUpActiveText, 
-                GRID_OFFSET_X + (GamePanel.GAME_WIDTH - powerUpWidth) / 2,
-                posX + 50);
-            g2dPowerUp.dispose();
-        
-            // If the power-up duration has elapsed, hide the power-up text
-            if (System.currentTimeMillis() - powerUpTextStartTime >= POWER_UP_TEXT_DURATION) {
-                showPowerUpText = false;
+            gameInterface.drawQueue(g);
+            gameInterface.drawHeldPiece(g);
+            gameInterface.drawGhostPiece(g, grid, ghostVisibility);
+            gameInterface.drawStats(g, gameTimer.getFormattedTime(), gameTimer.getTimeRemaining(), 
+            gameTimer.getElapsedTime(), grid.getPiecesPlaced(), grid.getLinesCleared(), 
+            score, level, powerUpAvailable, powerUpUsed);
+            
+            if(actionTextOn){
+                gameInterface.drawActionText(g);
+            }
+            if (isCountingdown) {
+                drawCountdown(g);
             }
         }
     }
-}    
+
+    //Method to take current piece user has and holds it, giving user flexibility in gameplay
+    private void holdPiece() {
+        Tetromino temp; // temp Tetromino object to swap piece
+
+        if (!canHold) return; // Can only hold once per piece
+    
+        if (heldPiece == null) {
+            // First time holding a piece
+            currentPiece.resetRotation(); // Reset rotation before holding
+            heldPiece = currentPiece;
+            spawnNewPiece();
+        } else {
+            // Swap current piece with held piece
+            temp = currentPiece;
+            currentPiece = heldPiece;
+            currentPiece.resetRotation(); // Reset rotation for the swapped-in piece
+            heldPiece = temp;
+            heldPiece.resetRotation(); // Reset rotation for the piece being held
+            
+            SoundManager.playSound("sfx/hold.wav");
+            
+            // Reset piece position
+            pieceX = GRID_COLS / 2 - 2;
+            pieceY = 0;
+    
+            // Check if the swapped piece causes a collision
+            if (checkCollision(pieceX, pieceY)) {
+                // If collision occurs, revert the swap and spawn a new piece
+                currentPiece = heldPiece;
+                heldPiece = null;
+                spawnNewPiece();
+                return;
+            }
+        }
+    
+        // Prevent multiple holds
+        canHold = false;
+        repaint();
+    }
+    
+    //Method to handle DAS setting
+    private void handleDAS() {
+        if (lastKeyPressed == -1 && leftKeyPressed) { // Move left if last key was left
+            if (dasCharge >= dasDelay) {
+                if (dasCharge % arrDelay == 0) {
+                    movePieceHorizontally(-1);
+                }
+            }
+            dasCharge++;
+        } else if (lastKeyPressed == 1 && rightKeyPressed) { // Move right if last key was right
+            if (dasCharge >= dasDelay) {
+                if (dasCharge % arrDelay == 0) {
+                    movePieceHorizontally(1);
+                }
+            }
+            dasCharge++;
+        } else {
+            dasCharge = 0; // Reset DAS charge if no keys are pressed
+        }
+    }
+
+    //Run method
+    @Override
+    public void run() {
+        long lastTime = System.nanoTime();
+        double amountOfTicks = 60.0;
+        double ns = 1000000000 / amountOfTicks;
+        double delta = 0;
+        long now;
+        long elapsedTime;
+        double adjustedDropInterval;
+
+        long lastDropTime = System.nanoTime();
+        double dropInterval = 1000000000; // gravity interval, can be sped up in different modes
+        
+        while (true) {
+            now = System.nanoTime();
+            elapsedTime = now - lastDropTime; // Calculate time since last drop
+            delta += (now - lastTime) / ns;
+            lastTime = now;
+            
+            if (delta >= 1) {
+                handleDAS();
+                gameCondition();
+                repaint();
+                delta--;
+            }        
+
+            if (softDropActive) {
+                adjustedDropInterval = 500000000 / softdropFactor; // If soft drop is active, drop faster
+                lockDelayTime = softdropFactor; // Increase lock delay for soft drop to be equal to without soft drop
+            } else {
+                adjustedDropInterval = dropInterval / gravityFactor; // If soft drop is not active, use normal interval
+                lockDelayTime = (int)gravityFactor;
+            }
+            
+            if (!isCountingdown && elapsedTime > adjustedDropInterval) {
+                updateGame(); // Call the game update function
+                lastDropTime = now; // Update the last drop time to the current time
+            }
+
+            updateAudioSettings();
+            
+        }
+
+    }
+
+    //Method to handle and update all audio and sound settings
+    private void updateAudioSettings() {
+        if (!audioEnabled) {
+            SoundManager.setMusicVolume(0);
+            SoundManager.setSfxVolume(0);
+        } else {
+            SoundManager.setMusicVolume(settings.getMusicVolume() / 100.0f);
+            SoundManager.setSfxVolume(settings.getSfxVolume() / 100.0f);
+        }
+    }
+
+    //Method to update the game
+    private void updateGame() {
+        updateSettings(settings);
+
+        if(isInGame()){
+            if (!checkCollision(pieceX, pieceY + 1) && isInGame()) {
+                pieceY++;
+                // Add 1 point per cell soft dropped
+                if(softDropActive){
+                    score++; 
+                }
+                currentLockDelayTime = 0;
+                isLockDelayActive = false;
+                movementCounter = 0;
+            } else {
+                // Piece has landed
+                if (!isLockDelayActive) {
+                    isLockDelayActive = true;
+                    currentLockDelayTime = 0;
+                }
+        
+                currentLockDelayTime++;
+        
+                // Lock the piece after lock delay or max movements
+                if (currentLockDelayTime >= lockDelayTime || movementCounter >= MAX_MOVEMENTS) {
+    
+                    grid.addPiece(currentPiece, pieceX, pieceY);
+
+                    if (lineDestroyerActive) {
+                        grid.clearSurroundingBlocks(currentPiece, pieceX, pieceY);
+                        lineDestroyerActive = false;  // Deactivate the power-up after use
+                        
+                        // Check for any lines that might have been cleared
+                        grid.clearFullLines();
+                    }
+
+                    updateLinesCleared(isTSpin()); 
+                    spawnNewPiece();
+                }
+            }
+        }    
+
+    }
+
+    //Method to handle various conditions the game may encounter
+    private void gameCondition() {
+        if (grid.getLinesCleared() >= 40 && currentState.equals(GameState.GAME_SPRINT)) {
+            currentState = GameState.SCORE_SCREEN;
+            result = gameTimer.getFormattedTime();
+            gameTimer.stop();
+            remove(scoreScreen);
+            scoreScreen = new ScoreScreen(this, result, previousState.toString(), scoreManager.isHighScore(result, previousState.toString()));
+            add(scoreScreen, BorderLayout.CENTER);
+            scoreScreen.setVisible(true);
+            revalidate();
+        }
+
+        if (gameTimer.getElapsedTime() >= 120000 && currentState.equals(GameState.GAME_TIMETRIAL)) {
+            currentState = GameState.SCORE_SCREEN;
+            result = String.format("%,d", score);
+            gameTimer.stop();
+            remove(scoreScreen);
+            scoreScreen = new ScoreScreen(this, result, previousState.toString(), scoreManager.isHighScore(result, previousState.toString()));
+            add(scoreScreen, BorderLayout.CENTER);
+            scoreScreen.setVisible(true);
+            revalidate();
+        }
+
+        if (currentState.equals(GameState.GAME_CHALLENGE)) {
+            long elapsedSeconds;
+            int powerUp;
+        
+            // Calculate difficulty based on time elapsed
+            elapsedSeconds = gameTimer.getElapsedTime() / 1000;
+            gravityFactor = Math.min(120.919, 1 + (elapsedSeconds / 10.0));
+        
+            // Check for power-up availability based on time interval
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastPowerUpTime >= POWER_UP_INTERVAL) {
+                powerUpUsed = false;
+                powerUpStored = false;  // Add this line
+                
+                if (!powerUpAvailable) {
+                    powerUp = (int)(Math.random() * 2) + 1;
+                    storePowerUps(powerUp);
+                    gameInterface.powerUpAvailable(powerUp);
+                    lastPowerUpTime = currentTime;
+                }
+            }
+        
+            // Handle slow time power-up
+            if (slowTimeActive) {
+                if (System.currentTimeMillis() - slowTimeStarted >= SLOW_TIME_DURATION) {
+                    slowTimeActive = false;
+                } else {
+                    gravityFactor = 1;
+                }
+            }
+        }
+        
+    }
+
+    //Method to store powerups (Slow down time, Line Destroyer)
+    public void storePowerUps(int powerup) {
+        if (!powerUpStored) {
+            if (powerup == 1) {
+                slowTimeAvailable = true;
+            } else if (powerup == 2) {
+                lineDestroyerAvailable = true;
+            }
+    
+            if (slowTimeAvailable || lineDestroyerAvailable) {
+                powerUpAvailable = true;
+            }
+    
+            powerUpStored = true; // Set the flag to indicate the power-up has been stored
+        }
+    }
+
+    //Method to activate powerups
+    public void activatePowerUp(int powerup) {
+        if (powerUpAvailable && !powerUpUsed && currentState == GameState.GAME_CHALLENGE) {
+            switch (powerup) {
+                case 1:
+                    slowTimeActive = true;
+                    slowTimeStarted = System.currentTimeMillis();
+                    gameInterface.triggerPowerUpText(1);
+                    break;
+                case 2:
+                    lineDestroyerActive = true;
+                    gameInterface.triggerPowerUpText(2);
+                    break;
+            }
+            powerUpAvailable = false;
+            lineDestroyerAvailable = false;
+            slowTimeAvailable = false;
+            powerUpUsed = true;
+        }
+    }
+
+    //Method to save high scores
+    public void saveHighScore(String previousState, String result, String username){
+        scoreManager.saveScore(previousState, result, username);
+    }
+
+    //Method to check for any collisions
+    private boolean checkCollision(int x, int y) {
+        return grid.checkCollision(currentPiece, x, y);
+    }
+
+    //Method to spawn new piece into the game
+    private void spawnNewPiece() {
+        currentPiece = pieceQueue.poll();
+        addPieceToQueue();
+        
+        // Reset piece position to spawn position
+        pieceX = (GRID_COLS - currentPiece.getShapeWidth()) / 2;
+        pieceY = -2;
+        canHold = true;
+
+        // Reset movement counter, harddrop distance, and softdrop distance
+        movementCounter = 0;
+
+        // Check collision and game state
+        if (checkCollision(pieceX, pieceY) && isInGame()) {
+            // Check if the spawn buffer is occupied
+            if (grid.isRowOccupied(-1)) {
+                // Ensure the main grid rows are checked before clearing
+                if (!grid.isRowOccupied(1)) {
+                    // Clear spawn buffer rows to avoid stuck pieces
+                    for (int i = 0; i < 10; i++) {
+                        grid.clearCell(-1, i);
+                        grid.clearCell(-2, i);
+                        grid.clearCell(-3, i);
+                    }
+                }
+            }
+
+            // If clearing fails or conditions persist, handle top-out
+            if (grid.isRowOccupied(1)) {
+                currentState = GameState.LOSE_SCREEN;
+                SoundManager.playSound("sfx/topout.wav");
+                add(loseScreen, BorderLayout.CENTER);
+                revalidate();
+                repaint();
+            }
+        }
+
+    }
+
+    //Method to immediately drop the piece to the bottom of the screen when the user presses space
+    private void hardDrop() {
+        while (!checkCollision(pieceX, pieceY + 1)) {
+            pieceY++;
+            score++;
+        }
+        SoundManager.playSound("sfx/harddrop.wav");
+        grid.addPiece(currentPiece, pieceX, pieceY);
+
+        if (lineDestroyerActive) {
+            grid.clearSurroundingBlocks(currentPiece, pieceX, pieceY);
+            lineDestroyerActive = false;  // Deactivate the power-up after use
+            
+            // Check for any lines that might have been cleared
+            grid.clearFullLines();
+        }
+
+        updateLinesCleared(isTSpin()); // Centralized update for lines cleared
+        spawnNewPiece();
+    }
+
+    //Method to update the current count of lines cleared
+    private void updateLinesCleared(boolean isTspin) {
+        int previousLinesCleared = grid.getLinesCleared();
+        
+        if(!isInGame()){
+            return;
+        }
+
+        grid.clearFullLines(); // Clear lines in the grid
+        controlGravity(); // Track levels
+        currentLinesCleared = grid.getLinesCleared() - previousLinesCleared;
+        totalLinesCleared += currentLinesCleared;
+
+        //Track back to backs
+        if(currentLinesCleared == 4){
+            backToBackCounter++;
+            if(backToBackCounter > 1){
+                SoundManager.playSound("sfx/clearbtb.wav");
+            }
+            else{
+                SoundManager.playSound("sfx/clearquad.wav");
+            }
+        }
+        else if(isTspin){
+            if(currentLinesCleared > 0){
+                backToBackCounter++;
+                if(backToBackCounter > 1){
+                    SoundManager.playSound("sfx/clearquad.wav");
+                }
+                else{
+                    SoundManager.playSound("sfx/clearquad.wav");
+                }
+            }
+
+        }
+        else if (currentLinesCleared > 0){
+            backToBackCounter = 0;
+            SoundManager.playSound("sfx/clearline.wav");
+        }
+
+        // Track combos
+        if(currentLinesCleared > 0){
+            comboCounter++;
+        }
+        else{
+            comboCounter = 0;
+        }
+
+        // Calculate Score
+        calculateScore(isTspin);
+
+        // Trigger action text
+        if(currentLinesCleared > 0){ // Only trigger if lines were cleared
+            gameInterface.triggerActionText(currentLinesCleared, isTspin, isGridEmpty(), backToBackCounter, comboCounter);
+        }
+    }
+
+    //Method to control gravity (how fast the block is falling)
+    private void controlGravity(){
+        int linesCleared = grid.getLinesCleared();
+        int previousLevel = level; // Store the previous level
+
+        // Arrays of levels and corresponding gravity factors
+        int[] levelThresholds = {3, 8, 15, 24, 35, 48, 63, 80, 99};
+        double[] gravityFactors = {1, 1.555, 2.475, 4.0161, 6.667, 11.367, 19.802, 35.336, 64.516, 120.919};
+    
+        if (currentState != GameState.GAME_TIMETRIAL) {
+            gravityFactor = 1;
+            return;
+        }
+    
+        // Find the appropriate level and gravity factor
+        for (int i = 0; i < levelThresholds.length; i++) {
+            if (linesCleared < levelThresholds[i]) {
+                level = i + 1;
+                gravityFactor = gravityFactors[i];
+                
+                // Check for level up here
+                if (level > previousLevel) {
+                    SoundManager.playSound("sfx/levelUp.wav");
+                }
+                return;
+            }
+        }
+    
+        // If linesCleared is 99 or more, set the highest level and gravity factor
+        if (linesCleared >= 99) {
+            level = 10;
+            gravityFactor = gravityFactors[gravityFactors.length - 1];
+            
+            // Check for level up here too
+            if (level > previousLevel) {
+                SoundManager.playSound("sfx/levelUp.wav");
+            }
+        }
+    }
+
+    //Method to calculate current score of the round the user is playing
+    private void calculateScore(boolean isTspin){
+        double backToBackMultiplier;
+
+        if(backToBackCounter > 1){
+            backToBackMultiplier = 1.5;
+        }
+        else{
+            backToBackMultiplier = 1;
+        }
+
+        // Calculate score
+        if(currentLinesCleared == 0){
+            if(isTspin){
+                score += 400 * level;
+            }
+            else{
+                score += 0;
+            }
+        }
+        else if(currentLinesCleared == 1){
+            if(isTspin){
+                score+= 800 * level * backToBackMultiplier;
+            }
+            else{
+                score += 100 * level;
+            }
+        }
+        else if(currentLinesCleared == 2){
+            if(isTspin){
+                score += 1200 * level * backToBackMultiplier;
+            }
+            else{
+                score += 300 * level;
+            }
+        }
+        else if(currentLinesCleared == 3){
+            if(isTspin){
+                score += 1600 * level * backToBackMultiplier;
+            }
+            else{
+                score += 500 * level;
+            }
+        }
+        else if(currentLinesCleared == 4){
+            score += 800 * level * backToBackMultiplier;
+        }
+
+        if(isGridEmpty()){
+            score += 3500 * level;
+            SoundManager.playSound("sfx/clearspin.wav");
+        }
+
+        if(comboCounter > 1){
+            score += level * (50 * (comboCounter-1));
+        }
+
+        score += 2 * harddropDistance; //2 points per cell dropped
+    }
+
+    //Method to check if the Grid is empty or not
+    private boolean isGridEmpty(){
+        for(int row = 0; row < Grid.ROWS; row++){
+            for(int col = 0; col < Grid.COLS; col++){
+                if(grid.isOccupied(row, col)){
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    //Method to allow the user to move piece left and right
+    private void movePieceHorizontally(int direction) {
+        if (!checkCollision(pieceX + direction, pieceY)) {
+            pieceX += direction;
+            if (isLockDelayActive) {
+                currentLockDelayTime = 0;
+                movementCounter++;
+            }
+        }
+    }
+
+    //Method to allow users to spin a piece even when it is touching the left/right wall
+    public boolean tryWallKick(int deltaX, int deltaY) {
+        // Store original position
+        int originalX = pieceX;
+        int originalY = pieceY;
+        
+        // Try the kick
+        pieceX += deltaX;
+        pieceY -= deltaY;  // Invert deltaY because Tetris grid Y increases downward
+        
+        // Check if the new position is valid using collision detection
+        if (checkCollision(pieceX, pieceY)) {
+            // Revert to original position if invalid
+            pieceX = originalX;
+            pieceY = originalY;
+            return false;
+        }
+        
+        // Reset lock delay and movement counter on successful wall kick
+        if (isLockDelayActive) {
+            currentLockDelayTime = 0;
+            movementCounter = 0;
+        }
+        
+        return true;
+    }
+
+    //Method to perform a wall kick
+    private boolean performWallKick() {
+    
+        int currentState = currentPiece.getRotationState();
+        int previousState = currentPiece.getPreviousRotation();
+        
+        // Determine which wall kick data to use for both CW and CCW rotations
+        int kickIndex;
+        int deltaX, deltaY;
+        
+        // For clockwise rotations
+        if (currentState == 1 && previousState == 0) kickIndex = 0;        // 0 -> R
+        else if (currentState == 2 && previousState == 1) kickIndex = 2;   // R -> 2
+        else if (currentState == 3 && previousState == 2) kickIndex = 4;   // 2 -> L
+        else if (currentState == 0 && previousState == 3) kickIndex = 6;   // L -> 0
+        // For counter-clockwise rotations
+        else if (currentState == 3 && previousState == 0) kickIndex = 7;   // 0 -> L
+        else if (currentState == 2 && previousState == 3) kickIndex = 5;   // L -> 2
+        else if (currentState == 1 && previousState == 2) kickIndex = 3;   // 2 -> R
+        else if (currentState == 0 && previousState == 1) kickIndex = 1;   // R -> 0
+        else return false;
+    
+        // Try each wall kick test
+        for (int i = 0; i < Tetromino.JLSTZ_WALLKICKS[kickIndex].length; i++) {
+            deltaX = Tetromino.JLSTZ_WALLKICKS[kickIndex][i][0];
+            deltaY = Tetromino.JLSTZ_WALLKICKS[kickIndex][i][1];
+            if (tryWallKick(deltaX, deltaY)) {
+                return true;
+            }
+        }
+
+        //I piece has different kick tests
+        if (currentPiece.getShapeWidth() == 4) {
+            for (int i = 0; i < Tetromino.I_WALLKICKS[kickIndex].length; i++) {
+                deltaX = Tetromino.I_WALLKICKS[kickIndex][i][0];
+                deltaY = Tetromino.I_WALLKICKS[kickIndex][i][1];
+                if (tryWallKick(deltaX, deltaY)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }    
+    
+    //Method to check if a line clear is a T-Spin
+    public boolean isTSpin(){
+        // Corner check variables
+        int row, col;
+        boolean isOutOfBounds, isOccupied;
+        int occupiedCorners = 0;
+
+        // Array with the coordinates of the corners of a T-piece
+        int[][] corners = {
+            {pieceY, pieceX},           // Top-left
+            {pieceY, pieceX + 2},       // Top-right
+            {pieceY + 2, pieceX},       // Bottom-left
+            {pieceY + 2, pieceX + 2}    // Bottom-right
+        };
+
+        if(currentPiece.getIndex() != 1 || !lastKeyValidRotation){
+            return false;
+        }
+
+        if(!isLockDelayActive){
+            return false;
+        }
+
+        // Count occupied corners
+        for (int i = 0; i < corners.length; i++) {
+            row = corners[i][0];
+            col = corners[i][1];
+
+            // Check if corner is outside grid bounds
+            isOutOfBounds = row >= Grid.ROWS || col >= Grid.COLS || col < 0;
+
+            // Check if corner is occupied by a block
+            isOccupied = false;
+            if (row >= 0) {  // Only check grid occupation if row is valid
+                isOccupied = grid.isOccupied(row, col);
+            }
+
+            // If either condition is true, count it as an occupied corner
+            if (isOutOfBounds || isOccupied) {
+                occupiedCorners++;
+            }
+        }
+
+        return occupiedCorners >= 3;
+    }
+
+    //KeyPressed method to check for keyboard pressing (input)
+    public void keyPressed(KeyEvent e) {
+        boolean pieceWasMoved = false;
+
+        if(currentState != GameState.MENU && currentState != GameState.LOSE_SCREEN && currentState != GameState.SCORE_SCREEN){
+            switch(e.getKeyCode()) {
+                case KeyEvent.VK_R:
+                    restartGame();
+                    SoundManager.playSound("sfx/redo.wav");
+                    break;
+                
+                case KeyEvent.VK_ESCAPE:
+                    if (currentState != GameState.MENU) {
+                        if (currentState == GameState.PAUSE) {
+                            // Unpause
+                            remove(pauseScreen);
+                            currentState = previousState;
+                        } else {
+                            // Pause
+                            currentState = GameState.PAUSE;
+                            add(pauseScreen, BorderLayout.CENTER);
+                            pauseScreen.resetButtonAppearance(pauseScreen.getMainMenuButton());
+                            pauseScreen.resetButtonAppearance(pauseScreen.getResumeButton());
+                        }
+                        revalidate();
+                        repaint();
+                    }
+                    break;
+            }
+        }
+
+        if (!isCountingdown && isInGame()) {
+            switch (e.getKeyCode()) {
+                case KeyEvent.VK_LEFT:
+                    leftKeyPressed = true;
+                    lastKeyPressed = -1; // Left arrow is now the last key pressed
+                    dasCharge = 0;
+                    movePieceHorizontally(-1);
+                    pieceWasMoved = true;
+                    lastKeyValidRotation = false;
+                    break;
+        
+                case KeyEvent.VK_RIGHT:
+                    rightKeyPressed = true;
+                    lastKeyPressed = 1; // Right arrow is now the last key pressed
+                    dasCharge = 0;
+                    movePieceHorizontally(1);
+                    pieceWasMoved = true;
+                    lastKeyValidRotation = false;
+                    break;
+        
+                case KeyEvent.VK_SHIFT:
+                    softDropActive = true;
+                    break;
+        
+                case KeyEvent.VK_UP:
+                    currentPiece.rotateCW();
+                    pieceWasMoved = true;
+                    movementCounter++;
+                    lastKeyValidRotation = true;
+                    if(isTSpin()){
+                        SoundManager.playSound("sfx/spin.wav");
+                    }
+                    if (!performWallKick()) {
+                        currentPiece.rotateCCW();
+                        lastKeyValidRotation = false;
+                    }
+                    
+                    break;
+        
+                case KeyEvent.VK_DOWN:
+                    currentPiece.rotateCCW();
+                    pieceWasMoved = true;
+                    movementCounter++;
+                    lastKeyValidRotation = true;
+                    if(isTSpin()){
+                        SoundManager.playSound("sfx/spin.wav");
+                    }
+                    if (!performWallKick()) {
+                        currentPiece.rotateCW();
+                        lastKeyValidRotation = false;
+                    }
+                    break;
+        
+                case KeyEvent.VK_X:
+                    currentPiece.rotateFlip();
+                    lastKeyValidRotation = false;
+                    pieceWasMoved = true;
+                    if (checkCollision(pieceX, pieceY)) {
+                        if(tryWallKick(-1, 0)) return;
+                        if(tryWallKick(1, 0)) return;
+                        currentPiece.rotateFlip(); // Undo if invalid
+                    }
+                    break;
+        
+                case KeyEvent.VK_SPACE:
+                    hardDrop();
+                    break;
+
+                case KeyEvent.VK_V:
+                    if(powerUpAvailable){
+                        if(slowTimeAvailable){
+                            activatePowerUp(1);
+                        }
+                        else if(lineDestroyerAvailable){
+                            activatePowerUp(2);
+
+                        }
+
+                    }
+                    break;
+
+                case KeyEvent.VK_C:
+                    holdPiece();
+                    lastKeyValidRotation = false;
+                    break;
+            
+                }
+        
+            // Reset lock delay if piece was moved or rotated until max movement reached
+            if (pieceWasMoved && isLockDelayActive && movementCounter < MAX_MOVEMENTS) {
+                currentLockDelayTime = 0;
+                movementCounter++;
+            }
+        
+            repaint();
+        }
+    }
+
+    //Key Released method to check for when a key is released
+    public void keyReleased(KeyEvent e) {
+        switch (e.getKeyCode()) {
+            case KeyEvent.VK_LEFT:
+                leftKeyPressed = false;
+                if (lastKeyPressed == -1) {
+                    if (rightKeyPressed) {
+                        lastKeyPressed = 1;
+                    } else {
+                        lastKeyPressed = 0;
+                    }
+                }
+                dasCharge = 0;
+                break;
+    
+            case KeyEvent.VK_RIGHT:
+                rightKeyPressed = false;
+                if (lastKeyPressed == 1) {
+                    if (leftKeyPressed) {
+                        lastKeyPressed = -1;
+                    } else {
+                        lastKeyPressed = 0;
+                    }                
+                }
+                dasCharge = 0;
+                break;
+    
+            case KeyEvent.VK_SHIFT:
+                softDropActive = false;
+                break;
+        }
+    }
+    
+    @Override
+    public void keyTyped(KeyEvent e) {}
+
+    // Methods for Score Screen Buttons
+    public void returntoGame() {
+        currentState = previousState;
+        remove(scoreScreen);
+        restartGame();
+        revalidate();
+        repaint();
+        scoreScreen.resetButtonAppearance(scoreScreen.getAgainButton());
+    }
+
+    //Method to return to main menu
+    public void returntoMenu(){
+        currentState = GameState.MENU;
+        menu.resetToMainMenu(null);
+        remove(scoreScreen);
+        revalidate();
+        repaint();
+        scoreScreen.resetButtonAppearance(scoreScreen.getMenuButton());
+    }
+
+    //Method to check if user is currently in game
+    public boolean isInGame(){
+        if (currentState == GameState.GAME_CHALLENGE || currentState == GameState.GAME_SPRINT || currentState == GameState.GAME_TIMETRIAL || currentState == GameState.GAME_PRACTICE){
+            return true;
+        }
+        else return false;
+    }
+}

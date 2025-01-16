@@ -240,7 +240,6 @@ public class Grid {
             // Handle buffer grid
             for (int col = 0; col < COLS; col++) {
                 if (bufferGrid[row + BUFFER_ROWS][col] != 0) { // Assuming 0 represents an empty cell
-                    System.out.println("buffer row occupied");
                     return true; // Return true if any cell in the buffer row is occupied
                 }
             }
@@ -248,7 +247,6 @@ public class Grid {
             // Handle main grid
             for (int col = 0; col < COLS; col++) {
                 if (grid[row][col] != 0) { // Assuming 0 represents an empty cell
-                    System.out.println("main grid row occupied");
                     return true; // Return true if any cell in the main grid row is occupied
                 }
             }

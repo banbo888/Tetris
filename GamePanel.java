@@ -84,6 +84,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private boolean slowTimeAvailable = false;
     private boolean lineDestroyerAvailable = false;
     private static final long SLOW_TIME_DURATION = 10000; // 3 seconds in milliseconds
+    private long lastPowerUpTime;
+    private static final long POWER_UP_INTERVAL = 30000;
 
     Thread gameThread;
     Tetromino currentPiece;
@@ -332,7 +334,9 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         previousState = currentState;
         powerUpAvailable = false;
         powerUpUsed = false;
+        powerUpStored = false;
         slowTimeActive = false;
+        lastPowerUpTime = System.currentTimeMillis(); // Reset the power-up timer when game restarts
 
         // Repaint to update the display
         repaint();
@@ -636,27 +640,35 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         if (currentState.equals(GameState.GAME_CHALLENGE)) {
             long elapsedSeconds;
             int powerUp;
-
+        
             // Calculate difficulty based on time elapsed
             elapsedSeconds = gameTimer.getElapsedTime() / 1000;
-            gravityFactor = Math.min(120.919, 1 + (elapsedSeconds / 10.0)); // Increases by 0.1 every 1 second, caps at max speed
-
-            // Check for power-up availability
-            if (totalLinesCleared > 10 && !powerUpAvailable) {
-                powerUp = (int)(Math.random() * 2) + 1; // Generate random power-up once
-                storePowerUps(powerUp); // randomly give a power up (slow time or line destroyer)
-                gameInterface.powerUpAvailable(powerUp);
+            gravityFactor = Math.min(120.919, 1 + (elapsedSeconds / 10.0));
+        
+            // Check for power-up availability based on time interval
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastPowerUpTime >= POWER_UP_INTERVAL) {
+                powerUpUsed = false;
+                powerUpStored = false;  // Add this line
+                
+                if (!powerUpAvailable) {
+                    powerUp = (int)(Math.random() * 2) + 1;
+                    storePowerUps(powerUp);
+                    gameInterface.powerUpAvailable(powerUp);
+                    lastPowerUpTime = currentTime;
+                }
             }
-
+        
             // Handle slow time power-up
             if (slowTimeActive) {
                 if (System.currentTimeMillis() - slowTimeStarted >= SLOW_TIME_DURATION) {
                     slowTimeActive = false;
                 } else {
-                    gravityFactor = 1; // Slow down pieces to half speed
+                    gravityFactor = 1;
                 }
             }
         }
+        
     }
 
     //Method to store powerups (Slow down time, Line Destroyer)
@@ -782,7 +794,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         totalLinesCleared += currentLinesCleared;
 
         //Track back to backs
-        if(isTspin || currentLinesCleared == 4){
+        if(currentLinesCleared == 4){
             backToBackCounter++;
             if(backToBackCounter > 1){
                 SoundManager.playSound("sfx/clearbtb.wav");
@@ -790,6 +802,18 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             else{
                 SoundManager.playSound("sfx/clearquad.wav");
             }
+        }
+        else if(isTspin){
+            if(currentLinesCleared > 0){
+                backToBackCounter++;
+                if(backToBackCounter > 1){
+                    SoundManager.playSound("sfx/clearquad.wav");
+                }
+                else{
+                    SoundManager.playSound("sfx/clearquad.wav");
+                }
+            }
+
         }
         else if (currentLinesCleared > 0){
             backToBackCounter = 0;

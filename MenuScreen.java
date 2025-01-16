@@ -59,7 +59,7 @@ public class MenuScreen extends JPanel {
         playButton.addActionListener(e -> showGameModeMenu(gamePanel));
         highScoresButton.addActionListener(e -> showHighscoresScreen(gamePanel));
         settingsButton.addActionListener(e -> showSettingsMenu(gamePanel));
-        instructionsButton.addActionListener(e -> JOptionPane.showMessageDialog(null, "Instructions feature coming soon!"));
+        instructionsButton.addActionListener(e -> showInstructionsScreen(gamePanel));
 
         // Add buttons to panel
         buttonsPanel.add(playButton);
@@ -622,4 +622,114 @@ public class MenuScreen extends JPanel {
         
         return panel;
     }    
+
+    private void showInstructionsScreen(GamePanel gamePanel) {
+        JLabel instructionsTitle;
+        JPanel contentPanel, backButtonPanel;
+        JButton backButton;
+        JTextPane instructionsText;
+        JScrollPane scrollPane;
+        String instructions;
+
+        removeAll();
+        setLayout(new BorderLayout());
+
+        // Title Panel
+        titlePanel = new JPanel();
+        titlePanel.setBackground(Color.BLACK);
+        instructionsTitle = new JLabel("INSTRUCTIONS");
+        instructionsTitle.setFont(new Font("Monospaced", Font.BOLD, 60));
+        instructionsTitle.setForeground(Color.WHITE);
+        instructionsTitle.setBorder(BorderFactory.createEmptyBorder(30, 0, 0, 0));
+        titlePanel.add(instructionsTitle);
+        add(titlePanel, BorderLayout.NORTH);
+
+        // Content Panel
+        contentPanel = new JPanel();
+        contentPanel.setBackground(Color.BLACK);
+        contentPanel.setLayout(new BorderLayout());
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(20, 50, 20, 50));
+
+        // Instructions Text
+        instructionsText = new JTextPane();
+        instructionsText.setEditable(false);
+        instructionsText.setBackground(Color.BLACK);
+        instructionsText.setForeground(Color.WHITE);
+        instructionsText.setFont(new Font("Monospaced", Font.PLAIN, 16));
+        
+        // Set the instructions content
+        instructions = """
+        1) SPRINT MODE
+               - Clear 40 lines as quickly as possible.
+               - Timer tracks how long it takes you to clear 40 lines.
+               - Final time is recorded.
+
+        2) TIME TRIAL MODE
+            - Get the highest score possible in 2 minutes.
+            - Levels increase the falling speed as you clear lines.
+            - T-spins and 4-line clears reward higher points.
+
+        3) PRACTICE MODE
+            - No timer, no score.
+            - Perfect for experimenting with piece placements and strategies.
+
+        4) CHALLENGE MODE
+            - Special tasks like clearing lines in limited moves, or specific line clears.
+            - Power-Ups include:
+                * Slow Down Time: temporarily slows falling speed.
+                * Line Destroyer: removes blocks around your placed piece.
+
+        CONTROLS
+            - Left Arrow (←): Move piece left
+            - Right Arrow (→): Move piece right
+            - Up Arrow (↑): Rotate piece clockwise
+            - Down Arrow (↓): Rotate piece counterclockwise
+            - X: Flip piece 180°
+            - SHIFT: Soft drop
+            - SPACE: Hard drop (instantly place piece)
+            - C: Hold piece
+            - V: Activate stored power-up (Challenge Mode)
+            - R: Restart (in-game)
+            - ESC: Pause/unpause
+
+        SETTINGS
+            - DAS (Delayed Auto-Shift), ARR (Auto-Repeat Rate), SDF (Soft Drop Factor)
+            - Audio: Music & SFX volume, or toggle off
+            - Grid & Ghost visibility
+            - Action Text: show/hide special move notifications
+
+        TIPS
+            - Hold pieces strategically to set up combos or T-spins.
+            - Watch the next queue to plan ahead.
+            - Power-ups (Challenge Mode) can be game-changers.
+            - Practice Mode is a great way to learn without pressure.
+        """;
+        
+        instructionsText.setText(instructions);
+
+        // Add scroll capability
+        scrollPane = new JScrollPane(instructionsText);
+        scrollPane.setBackground(Color.BLACK);
+        scrollPane.setBorder(BorderFactory.createLineBorder(Color.WHITE));
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        contentPanel.add(scrollPane, BorderLayout.CENTER);
+        add(contentPanel, BorderLayout.CENTER);
+
+        // Back button
+        backButtonPanel = new JPanel();
+        backButtonPanel.setBackground(Color.BLACK);
+        backButtonPanel.setLayout(new BorderLayout());
+        backButtonPanel.setBorder(BorderFactory.createEmptyBorder(10, 100, 30, 100));
+        
+        backButton = createMenuButton("BACK");
+        backButton.addActionListener(e -> {
+            resetToMainMenu(gamePanel);
+            SoundManager.playSound("sfx/menuback.wav");
+        });
+        backButtonPanel.add(backButton, BorderLayout.CENTER);
+        add(backButtonPanel, BorderLayout.SOUTH);
+
+        revalidate();
+        repaint();
+    }
 }

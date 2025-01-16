@@ -1,110 +1,58 @@
 //ICS Summative - Tetris by Richard Xiong & Eric Ma
 //Beta Program Submission
 //2025-01-09
-//PauseScreen Class - Displays a pause menu with options to resume the game or return to the main menu, providing a user interface for pausing and resuming gameplay.
+//PieceBagGenerator Class - Randomly generates a piece that goes into the piece queue during the game.
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 
-public class PauseScreen extends JPanel {
-    public JButton resumeBotton;
-    public JButton mainMenuButton;
-    private JPanel titlePanel;
-    private JPanel buttonsPanel;
-    private JLabel pausedLabel;
+public class PieceBagGenerator {
+    private List<Integer> bag = new ArrayList<>(); // List to hold the piece identifiers (0 to 6)
+    private Random random = new Random(); // Random object for shuffling the bag
+    private static final Color[] COLORS = {
+        Color.CYAN,    // I piece
+        Color.MAGENTA, // T piece
+        Color.YELLOW,  // O piece
+        Color.RED,     // Z piece
+        Color.GREEN,   // S piece
+        Color.BLUE,    // J piece
+        Color.ORANGE   // L piece
+    };
 
-    public PauseScreen(GamePanel gamePanel) {
-        JPanel containerPanel;
-
-        setLayout(new GridBagLayout()); // Changed to GridBagLayout for better centering
-        setBackground(Color.BLACK); // More translucent background
-
-        // Main container panel to hold everything
-        containerPanel = new JPanel();
-        containerPanel.setLayout(new BorderLayout());
-        containerPanel.setBackground(new Color(0, 0, 0, 120)); // Semi-transparent container
-        containerPanel.setPreferredSize(new Dimension(200, 150)); // Smaller fixed size
-
-        // Title Panel
-        titlePanel = new JPanel();
-        titlePanel.setBackground(new Color(0, 0, 0, 0)); // Fully transparent
-        pausedLabel = new JLabel("EXIT TO MENU?");
-        pausedLabel.setFont(new Font("Monospaced", Font.BOLD, 24)); // Smaller font
-        pausedLabel.setForeground(Color.WHITE);
-        pausedLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0)); // Smaller padding
-        titlePanel.add(pausedLabel);
-
-        // Buttons Panel
-        buttonsPanel = new JPanel();
-        buttonsPanel.setBackground(new Color(0, 0, 0, 0)); // Fully transparent
-        buttonsPanel.setLayout(new GridLayout(2, 1, 5, 5)); // Vertical layout with small gap
-
-        // Create Buttons
-        resumeBotton = createMenuButton("RESUME");
-        mainMenuButton = createMenuButton("RETURN TO MENU");
-
-        // Add buttons to panel
-        buttonsPanel.add(resumeBotton);
-        buttonsPanel.add(mainMenuButton);
-
-        // Smaller padding for buttons panel
-        buttonsPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-
-        // Add panels to container
-        containerPanel.add(titlePanel, BorderLayout.NORTH);
-        containerPanel.add(buttonsPanel, BorderLayout.CENTER);
-
-        // Add container to main panel
-        add(containerPanel);
+    // Constructor that initializes the piece bag with a shuffled set of pieces
+    public PieceBagGenerator() {
+        refillBag(); // Call refillBag to initialize the bag with a shuffled set of pieces
     }
 
-    // Method to create button
-    private JButton createMenuButton(String text) {
-        JButton button;
-        
-        button = new JButton(text);
-        button.setFocusPainted(false);
-        button.setFont(new Font("Arial", Font.BOLD, 12)); // Smaller font
-        button.setBackground(new Color(255, 255, 255, 200)); // Semi-transparent white
-        button.setForeground(Color.BLACK);
-        button.setPreferredSize(new Dimension(100, 25)); // Fixed small size
-        button.setMaximumSize(new Dimension(100, 25));
-        button.setOpaque(true);
-        button.setBorder(BorderFactory.createLineBorder(Color.WHITE, 1));
+    // Method to refill the bag with pieces (0-6), then shuffle them to randomize the order
+    public void refillBag() {
+        bag.clear(); // Clear any previous pieces in the bag
 
-        // Mouse hover effect
-        button.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(new Color(169, 169, 169, 200)); // Semi-transparent gray
-                button.setForeground(Color.WHITE);
-            }
+        // Add the 7 unique pieces (0 to 6) to the bag
+        for (int i = 0; i < 7; i++) {
+            bag.add(i);
+        }
 
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(new Color(255, 255, 255, 200));
-                button.setForeground(Color.BLACK);
-            }
-
-            public void mouseReleased(java.awt.event.MouseEvent evt) {
-                button.setBackground(new Color(169, 169, 169, 200));
-            }
-        });
-
-        return button;
+        // Shuffle the bag so the order of pieces is random each time
+        Collections.shuffle(bag, random);
     }
 
-    // Get Resume and MainMenu buttons for use in GamePanel
-    public JButton getResumeButton() {
-        return resumeBotton;
-    }
+    // Method to get the next piece from the bag
+    public Tetromino getNextPiece() {
+        int index;
 
-    public JButton getMainMenuButton() {
-        return mainMenuButton;
-    }
+        // If the bag is empty, refill it with a new set of pieces
+        if (bag.isEmpty()) {
+            refillBag();
+        }
 
-    // Reset button appearance
-    public void resetButtonAppearance(JButton button) {
-        button.setBackground(new Color(255, 255, 255, 200));
-        button.setForeground(Color.BLACK);
-        button.setFont(button.getFont().deriveFont(12f));
+        // Remove and get the first piece from the bag
+        index = bag.remove(0);
+
+        // Return a new Tetromino object based on the index and its corresponding color
+        return new Tetromino(index, COLORS[index]);
     }
 }

@@ -10,17 +10,32 @@ public class Grid {
     public static final int COLS = 10; // Number of columns in the grid
     private int[][] grid; // 2D array to store grid data (0 for empty, 1 for filled)
     private Color[][] colors; // 2D array to store the colors of the grid cells
+    
+    // Add a buffer zone above the grid for pieces that extend above
+    private static final int BUFFER_ROWS = 4;
+    private int[][] bufferGrid;
+    private Color[][] bufferColors;
+    
     public int linesCleared = 0; // Tracks the number of lines cleared
     public int piecesPlaced = 0; // Tracks the number of pieces placed
+
 
     public Grid() {
         // Initializes the grid and colors arrays, setting all cells to empty and black
         grid = new int[ROWS][COLS];
         colors = new Color[ROWS][COLS];
+        bufferGrid = new int[BUFFER_ROWS][COLS];
+        bufferColors = new Color[BUFFER_ROWS][COLS];
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
                 grid[row][col] = 0; // 0 means empty
                 colors[row][col] = Color.BLACK; // Black represents an empty cell
+            }
+        }
+        for (int row = 0; row < BUFFER_ROWS; row++) {
+            for (int col = 0; col < COLS; col++) {
+                bufferGrid[row][col] = 0;
+                bufferColors[row][col] = Color.BLACK;
             }
         }
     }
@@ -41,6 +56,10 @@ public class Grid {
                         if (newY >= 0) { // Ensure within vertical bounds (above the grid)
                             grid[newY][newX] = 1; // Mark the grid as filled
                             colors[newY][newX] = piece.getColor(); // Set the color of the piece
+                        } else if (newY < 0 && -newY <= BUFFER_ROWS) {
+                            // Add to buffer grid
+                            bufferGrid[BUFFER_ROWS + newY][newX] = 1;
+                            bufferColors[BUFFER_ROWS + newY][newX] = piece.getColor();
                         }
                     }
                 }
@@ -69,14 +88,15 @@ public class Grid {
                     newX = x + col;
                     newY = y + row;
     
-                    // Ensure newX and newY are within grid bounds
-                    if (newX < 0 || newX >= COLS || newY >= ROWS) {
-                        return true; // Collision if outside grid bounds
+                     // Check only horizontal bounds and bottom bound
+                     if (newX < 0 || newX >= COLS || newY >= ROWS) {
+                        return true;
                     }
-    
-                    // Check for collision with other placed pieces
+
+                    // Only check for collision with existing pieces if the block is actually in the grid
+                    // This means we IGNORE blocks that are above the grid (newY < 0)
                     if (newY >= 0 && grid[newY][newX] == 1) {
-                        return true; // Collision if there's already a piece in the cell
+                        return true;
                     }
                 }
             }
@@ -85,24 +105,69 @@ public class Grid {
     }
 
     public void clearFullLines() {
-        // Clears any full lines in the grid
-        boolean full;
+        // Create temporary grids including buffer
+        int totalRows = ROWS + BUFFER_ROWS;
+        int[][] tempGrid = new int[totalRows][COLS];
+        Color[][] tempColors = new Color[totalRows][COLS];
         
-        for (int row = 0; row < ROWS; row++) {
-            full = true; // Assume the line is full
+        // Copy buffer and main grid into temp grids
+        for (int row = 0; row < BUFFER_ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
-                if (grid[row][col] == 0) { // If there's any empty cell, the line is not full
-                    full = false;
+                tempGrid[row][col] = bufferGrid[row][col];
+                tempColors[row][col] = bufferColors[row][col];
+            }
+        }
+        for (int row = 0; row < ROWS; row++) {
+            for (int col = 0; col < COLS; col++) {
+                tempGrid[row + BUFFER_ROWS][col] = grid[row][col];
+                tempColors[row + BUFFER_ROWS][col] = colors[row][col];
+            }
+        }
+        
+        // Find and clear full lines
+        int writeRow = totalRows - 1;
+        for (int readRow = totalRows - 1; readRow >= 0; readRow--) {
+            boolean isLineFull = true;
+            for (int col = 0; col < COLS; col++) {
+                if (tempGrid[readRow][col] == 0) {
+                    isLineFull = false;
                     break;
                 }
             }
-            if (full) {
-                // Shift all rows above this line down by one
-                for (int i = row; i > 0; i--) {
-                    grid[i] = grid[i - 1].clone(); // Copy the previous row
-                    colors[i] = colors[i - 1].clone(); // Copy the colors of the previous row
+            
+            if (!isLineFull) {
+                if (writeRow != readRow) {
+                    // Copy row to new position
+                    for (int col = 0; col < COLS; col++) {
+                        tempGrid[writeRow][col] = tempGrid[readRow][col];
+                        tempColors[writeRow][col] = tempColors[readRow][col];
+                    }
                 }
-                linesCleared++; // Increment the lines cleared count
+                writeRow--;
+            } else {
+                linesCleared++;
+            }
+        }
+        // Clear remaining rows
+        while (writeRow >= 0) {
+            for (int col = 0; col < COLS; col++) {
+                tempGrid[writeRow][col] = 0;
+                tempColors[writeRow][col] = Color.BLACK;
+            }
+            writeRow--;
+        }
+        
+        // Copy back to buffer and main grid
+        for (int row = 0; row < BUFFER_ROWS; row++) {
+            for (int col = 0; col < COLS; col++) {
+                bufferGrid[row][col] = tempGrid[row][col];
+                bufferColors[row][col] = tempColors[row][col];
+            }
+        }
+        for (int row = 0; row < ROWS; row++) {
+            for (int col = 0; col < COLS; col++) {
+                grid[row][col] = tempGrid[row + BUFFER_ROWS][col];
+                colors[row][col] = tempColors[row + BUFFER_ROWS][col];
             }
         }
     }
@@ -168,20 +233,41 @@ public class Grid {
     }
 
     public void draw(Graphics g, int offsetX, int offsetY) {
-        // Draws the entire grid, including the filled cells and their colors
-        for (int row = 0; row < ROWS; row++) {
+        // Draw buffer grid blocks (if they exist)
+        for (int row = 0; row < BUFFER_ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
-                if (grid[row][col] != 0) { // Only draw filled cells
-                    g.setColor(colors[row][col]); // Set the color of the cell
+                if (bufferGrid[row][col] != 0) {
+                    g.setColor(bufferColors[row][col]);
                     g.fillRect(
-                        offsetX + col * Tetromino.BLOCK_SIZE, // Calculate the x position for the block
-                        offsetY + row * Tetromino.BLOCK_SIZE, // Calculate the y position for the block
-                        Tetromino.BLOCK_SIZE, // Set the width and height of the block
+                        offsetX + col * Tetromino.BLOCK_SIZE, 
+                        offsetY + (row - BUFFER_ROWS) * Tetromino.BLOCK_SIZE,
+                        Tetromino.BLOCK_SIZE, 
                         Tetromino.BLOCK_SIZE
                     );
                     g.drawRect(
-                        offsetX + col * Tetromino.BLOCK_SIZE, // Draw the border of the block
-                        offsetY + row * Tetromino.BLOCK_SIZE, 
+                        offsetX + col * Tetromino.BLOCK_SIZE, 
+                        offsetY + (row - BUFFER_ROWS) * Tetromino.BLOCK_SIZE,
+                        Tetromino.BLOCK_SIZE, 
+                        Tetromino.BLOCK_SIZE
+                    );
+                }
+            }
+        }
+        
+        // Draw main grid blocks
+        for (int row = 0; row < ROWS; row++) {
+            for (int col = 0; col < COLS; col++) {
+                if (grid[row][col] != 0) {
+                    g.setColor(colors[row][col]);
+                    g.fillRect(
+                        offsetX + col * Tetromino.BLOCK_SIZE, 
+                        offsetY + row * Tetromino.BLOCK_SIZE,
+                        Tetromino.BLOCK_SIZE, 
+                        Tetromino.BLOCK_SIZE
+                    );
+                    g.drawRect(
+                        offsetX + col * Tetromino.BLOCK_SIZE, 
+                        offsetY + row * Tetromino.BLOCK_SIZE,
                         Tetromino.BLOCK_SIZE, 
                         Tetromino.BLOCK_SIZE
                     );
@@ -189,4 +275,5 @@ public class Grid {
             }
         }
     }
+
 }

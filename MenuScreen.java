@@ -227,6 +227,7 @@ public class MenuScreen extends JPanel {
         arrField = createNumberField(settings.getArr(), "Automatic Repeat Rate: the speed at which tetrominoes move when holding down movement keys (in frames)", 0, 5);
         dasField = createNumberField(settings.getDas(), "Delayed Auto Shift: the delay before tetrominoes start moving when holding down movement keys (in frames)", 1, 20);
         sdfField = createNumberField(settings.getSdf(), "Soft Drop Factor: the speed at which tetrominoes fall when soft dropping", 5, 100);
+        ToolTipManager.sharedInstance().setDismissDelay(10000); // 10 seconds before hiding tooltip
         
         handlingPanel.add(createSettingRow("ARR (1-5)   ", arrField));
         handlingPanel.add(createSettingRow("DAS (1-20)  ", dasField));
@@ -693,7 +694,9 @@ public class MenuScreen extends JPanel {
             - ESC: Pause/unpause
 
         SETTINGS
-            - DAS (Delayed Auto-Shift), ARR (Auto-Repeat Rate), SDF (Soft Drop Factor)
+            - DAS (Delayed Auto-Shift): the delay before tetrominoes start moving when holding down movement keys (in frames).
+            - ARR (Auto-Repeat Rate): the speed at which tetrominoes move when holding down movement keys (in frames).
+            - SDF (Soft Drop Factor): the speed at which tetrominoes fall while softdropping.
             - Audio: Music & SFX volume, or toggle off
             - Grid & Ghost visibility
             - Action Text: show/hide special move notifications

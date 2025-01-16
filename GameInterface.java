@@ -180,7 +180,7 @@ public class GameInterface {
             g.drawString("LINES LEFT:", posX, posY - 140);
             g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Value font
             g.drawString(String.valueOf(linesRemaining), posX, posY - 95);
-        } else if (gameState.equals("GAME_TIMETRIAL") || gameState.equals("GAME_CHALLENGE")) {
+        } else if (gameState.equals("GAME_TIMETRIAL") || gameState.equals("GAME_CHALLENGE") || gameState.equals("GAME_PRACTICE")) {
             g.setFont(new Font("SansSerif", Font.BOLD, 20)); // Label font
             g.drawString("SCORE:", posX, posY - 140);
             g.setFont(new Font("SansSerif", Font.BOLD, 35)); // Value font
@@ -246,7 +246,7 @@ public class GameInterface {
         // Draws the "HOLD" label to indicate the held piece area
         g.setColor(Color.WHITE);
         g.setFont(new Font("SansSerif", Font.BOLD, 25));
-        g.drawString("HOLD", startX, startY - 20);
+        g.drawString("HOLD (C)", startX, startY - 20);
     
         // If a piece is held, draw it at the specified location
         if (heldPiece != null) {
@@ -373,17 +373,24 @@ public class GameInterface {
         // Draw power-up activation text if necessary
         if (showPowerUpText) {
             g2dPowerUp.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, powerUpFadeAlpha));
-            g2dPowerUp.setFont(new Font("SansSerif", Font.BOLD, 25));
+            g2dPowerUp.setFont(new Font("SansSerif", Font.BOLD, 40)); // Increased font size
             g2dPowerUp.setColor(new Color(0, 255, 255)); // Cyan color
             fmPowerUp = g2dPowerUp.getFontMetrics();
             powerUpWidth = fmPowerUp.stringWidth(powerUpActiveText);
-            
-            // Center the power-up text on the screen
+        
+            // Draw shadow for better visibility
+            g2dPowerUp.setColor(Color.BLACK);
+            g2dPowerUp.drawString(powerUpActiveText, 
+                GRID_OFFSET_X + (GamePanel.GAME_WIDTH - powerUpWidth) / 2 + 2,
+                posX + 52);
+        
+            // Draw the main text
+            g2dPowerUp.setColor(new Color(0, 255, 255)); // Cyan color
             g2dPowerUp.drawString(powerUpActiveText, 
                 GRID_OFFSET_X + (GamePanel.GAME_WIDTH - powerUpWidth) / 2,
                 posX + 50);
             g2dPowerUp.dispose();
-    
+        
             // If the power-up duration has elapsed, hide the power-up text
             if (System.currentTimeMillis() - powerUpTextStartTime >= POWER_UP_TEXT_DURATION) {
                 showPowerUpText = false;

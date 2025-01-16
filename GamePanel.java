@@ -14,7 +14,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     //Variable Declaration
     
     public static final int GAME_WIDTH = 300;  // Width of main grid
-    private static final int TOP_PANEL_HEIGHT = 50; // Adjust as needed
+    private static final int TOP_PANEL_HEIGHT = 100; // Adjust as needed
     private static final int BOTTOM_PANEL_HEIGHT = 50; // Adjust as needed 
     public static final int GAME_HEIGHT = 600 + TOP_PANEL_HEIGHT + BOTTOM_PANEL_HEIGHT; // Original height plus new panels
     private static final int BLOCK_SIZE = Tetromino.BLOCK_SIZE;
@@ -141,6 +141,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             GAME_HEIGHT
         ));        
         this.setBackground(Color.BLACK); 
+        this.setDoubleBuffered(true);
         this.setLayout(new BorderLayout());
         add(menu, BorderLayout.CENTER);
 
@@ -713,22 +714,38 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         
         // Reset piece position to spawn position
         pieceX = (GRID_COLS - currentPiece.getShapeWidth()) / 2;
-        pieceY = 0;
+        pieceY = -2;
         canHold = true;
 
         // Reset movement counter, harddrop distance, and softdrop distance
         movementCounter = 0;
 
-        // Check if can spawn new piece, game is over if cannot
-        if (checkCollision(pieceX, pieceY) && isInGame() && grid.isTopRowOccupied()) {
-            currentState = GameState.LOSE_SCREEN;
-            SoundManager.playSound("sfx/topout.wav");
+        // Check collision and game state
+        if (checkCollision(pieceX, pieceY) && isInGame()) {
+            // Check if the spawn buffer is occupied
+            if (grid.isRowOccupied(-1)) {
+                // Ensure the main grid rows are checked before clearing
+                if (!grid.isRowOccupied(1)) {
+                    // Clear spawn buffer rows to avoid stuck pieces
+                    for (int i = 0; i < 10; i++) {
+                        grid.clearCell(-1, i);
+                        grid.clearCell(-2, i);
+                        grid.clearCell(-3, i);
+                        System.out.println("cells cleared");
+                    }
+                }
+            }
 
-            add(loseScreen, BorderLayout.CENTER);
-
-            revalidate();
-            repaint(); 
+            // If clearing fails or conditions persist, handle top-out
+            if (grid.isRowOccupied(1)) {
+                currentState = GameState.LOSE_SCREEN;
+                SoundManager.playSound("sfx/topout.wav");
+                add(loseScreen, BorderLayout.CENTER);
+                revalidate();
+                repaint();
+            }
         }
+
     }
 
     //Method to immediately drop the piece to the bottom of the screen when the user presses space
@@ -1042,7 +1059,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     public void keyPressed(KeyEvent e) {
         boolean pieceWasMoved = false;
 
-        if(currentState != GameState.MENU){
+        if(currentState != GameState.MENU && currentState != GameState.LOSE_SCREEN && currentState != GameState.SCORE_SCREEN){
             switch(e.getKeyCode()) {
                 case KeyEvent.VK_R:
                     restartGame();

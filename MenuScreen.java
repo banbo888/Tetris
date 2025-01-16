@@ -680,10 +680,10 @@ public class MenuScreen extends JPanel {
                 * Line Destroyer: removes blocks around your placed piece.
 
         CONTROLS
-            - Left Arrow (←): Move piece left
-            - Right Arrow (→): Move piece right
-            - Up Arrow (↑): Rotate piece clockwise
-            - Down Arrow (↓): Rotate piece counterclockwise
+            - Left Arrow: Move piece left
+            - Right Arrow: Move piece right
+            - Up Arrow: Rotate piece clockwise
+            - Down Arrow: Rotate piece counterclockwise
             - X: Flip piece 180°
             - SHIFT: Soft drop
             - SPACE: Hard drop (instantly place piece)

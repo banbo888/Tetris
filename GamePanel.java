@@ -731,7 +731,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                         grid.clearCell(-1, i);
                         grid.clearCell(-2, i);
                         grid.clearCell(-3, i);
-                        System.out.println("cells cleared");
                     }
                 }
             }

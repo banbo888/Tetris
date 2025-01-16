@@ -78,32 +78,42 @@ public class Grid {
     }
     
     public boolean checkCollision(Tetromino piece, int x, int y) {
-        // Checks if the given piece collides with the grid at the specified position (x, y)
         int[][] shape = piece.getShape();
         int newX, newY;
-
+    
         for (int row = 0; row < shape.length; row++) {
             for (int col = 0; col < shape[row].length; col++) {
-                if (shape[row][col] == 1) { // If part of the piece
+                if (shape[row][col] == 1) {
                     newX = x + col;
                     newY = y + row;
     
-                     // Check only horizontal bounds and bottom bound
-                     if (newX < 0 || newX >= COLS || newY >= ROWS) {
+                    // Check horizontal bounds always
+                    if (newX < 0 || newX >= COLS) {
                         return true;
                     }
-
-                    // Only check for collision with existing pieces if the block is actually in the grid
-                    // This means we IGNORE blocks that are above the grid (newY < 0)
+                    
+                    // Check bottom bound
+                    if (newY >= ROWS) {
+                        return true;
+                    }
+                    
+                    // Check collision with existing pieces in main grid
                     if (newY >= 0 && grid[newY][newX] == 1) {
                         return true;
+                    }
+                    
+                    // Check collision with pieces in buffer zone
+                    if (newY < 0 && -newY <= BUFFER_ROWS) {
+                        if (bufferGrid[BUFFER_ROWS + newY][newX] == 1) {
+                            return true;
+                        }
                     }
                 }
             }
         }
-        return false; // No collision
+        return false;
     }
-
+    
     public void clearFullLines() {
         // Create temporary grids including buffer
         int totalRows = ROWS + BUFFER_ROWS;

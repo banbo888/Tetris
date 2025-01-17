@@ -1,6 +1,6 @@
 //ICS Summative - Tetris by Richard Xiong & Eric Ma
-//Beta Program Submission
-//2025-01-09
+//Final Program Submission
+//2025-01-16
 //ScoreScreen Class - Displays the final score or time, allows the player to enter their username, and provides buttons to restart the game or return to the main menu.
 
 import javax.swing.*;

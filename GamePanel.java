@@ -1,12 +1,13 @@
 //ICS Summative - Tetris by Richard Xiong & Eric Ma
-//Beta Program Submission
-//2025-01-09
+//Final Program Submission
+//2025-01-16
 //GamePanel Class - Manages all of the logic in the game (i.e. the loop, the thread, as well as general mechanisms of tetris like the menu, game phase, etc.)
 
 import java.awt.*;
 import java.awt.event.*;
 import java.util.LinkedList;
 import java.util.Queue;
+
 import javax.swing.*;
 
 public class GamePanel extends JPanel implements Runnable, KeyListener {
@@ -59,7 +60,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     // Line clear logic variable (stores line clears, back to back, combo, and Tspin stats)
     private int currentLinesCleared = 0; // Check how many lines were cleared in a move
-    private int totalLinesCleared = 0;
     private int backToBackCounter = 0; // Check for back-to-back (quads and Tspins)
     private int comboCounter = 0;
     private boolean lastKeyValidRotation = false; // Check if the last key pressed was a rotation
@@ -85,7 +85,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private boolean lineDestroyerAvailable = false;
     private static final long SLOW_TIME_DURATION = 10000; // 3 seconds in milliseconds
     private long lastPowerUpTime;
-    private static final long POWER_UP_INTERVAL = 30000;
+    private static final long POWER_UP_INTERVAL = 15000;
 
     Thread gameThread;
     Tetromino currentPiece;
@@ -120,6 +120,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     //GamePanel Constructor
     public GamePanel() {
+        // Initiatialize elements
         menu = new MenuScreen(this);
         pauseScreen = new ExitScreen(this, "EXIT TO MAIN MENU?", "RESUME", "EXIT TO MAIN MENU", "PAUSE");
         loseScreen = new ExitScreen(this, "GAME OVER", "TRY AGAIN", "EXIT TO MAIN MENU", "LOSE");
@@ -151,7 +152,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         gameThread = new Thread(this);
         gameThread.start();
         
-        SoundManager.playMusic("music/theme.wav");
+        SoundManager.playMusic("music/theme.wav"); // Play background music
 
         // Action Listeners for Pause Screen
         pauseScreen.getResumeButton().addActionListener(e -> {
@@ -326,18 +327,18 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         level = 0;
         gravityFactor = 1;
         backToBackCounter = 0;
-        totalLinesCleared = 0;
         gameTimer.reset();  // Reset the timer
         gameTimer.start();  // Restart the timer
 
         // Store game mode
         previousState = currentState;
+
+        //Store powerup stats
         powerUpAvailable = false;
         powerUpUsed = false;
         powerUpStored = false;
         slowTimeActive = false;
         lastPowerUpTime = System.currentTimeMillis(); // Reset the power-up timer when game restarts
-
         // Repaint to update the display
         repaint();
     }
@@ -398,7 +399,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             pauseScreen.setVisible(false);
             loseScreen.setVisible(false);
         }
-        else {
+        else { 
             menu.setVisible(false);
             pauseScreen.setVisible(false);
             loseScreen.setVisible(false);
@@ -442,9 +443,12 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             gameTimer.getElapsedTime(), grid.getPiecesPlaced(), grid.getLinesCleared(), 
             score, level, powerUpAvailable, powerUpUsed);
             
+            // Draw action text
             if(actionTextOn){
                 gameInterface.drawActionText(g);
             }
+
+            // Draw countdown
             if (isCountingdown) {
                 drawCountdown(g);
             }
@@ -574,6 +578,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         updateSettings(settings);
 
         if(isInGame()){
+            // Drop tetrominoes
             if (!checkCollision(pieceX, pieceY + 1) && isInGame()) {
                 pieceY++;
                 // Add 1 point per cell soft dropped
@@ -615,10 +620,12 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     //Method to handle various conditions the game may encounter
     private void gameCondition() {
+        // Check if user has cleared 40 lines
         if (grid.getLinesCleared() >= 40 && currentState.equals(GameState.GAME_SPRINT)) {
             currentState = GameState.SCORE_SCREEN;
-            result = gameTimer.getFormattedTime();
-            gameTimer.stop();
+            result = gameTimer.getFormattedTime(); // Get time user took to clear 40 lines
+            gameTimer.stop(); // Stop timer
+            // Draw score screen
             remove(scoreScreen);
             scoreScreen = new ScoreScreen(this, result, previousState.toString(), scoreManager.isHighScore(result, previousState.toString()));
             add(scoreScreen, BorderLayout.CENTER);
@@ -626,10 +633,12 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             revalidate();
         }
 
+        // Check if 2 minutes timer is up
         if (gameTimer.getElapsedTime() >= 120000 && currentState.equals(GameState.GAME_TIMETRIAL)) {
             currentState = GameState.SCORE_SCREEN;
-            result = String.format("%,d", score);
-            gameTimer.stop();
+            result = String.format("%,d", score); // Get score as a string
+            gameTimer.stop(); // Stop timer
+            // Draw score screen
             remove(scoreScreen);
             scoreScreen = new ScoreScreen(this, result, previousState.toString(), scoreManager.isHighScore(result, previousState.toString()));
             add(scoreScreen, BorderLayout.CENTER);
@@ -637,25 +646,46 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             revalidate();
         }
 
+        // Check for power up availability
         if (currentState.equals(GameState.GAME_CHALLENGE)) {
             long elapsedSeconds;
+            System.out.println(powerUpAvailable);
             int powerUp;
-        
+            long currentTime;
+
             // Calculate difficulty based on time elapsed
             elapsedSeconds = gameTimer.getElapsedTime() / 1000;
             gravityFactor = Math.min(120.919, 1 + (elapsedSeconds / 10.0));
         
             // Check for power-up availability based on time interval
-            long currentTime = System.currentTimeMillis();
+            currentTime = System.currentTimeMillis();
             if (currentTime - lastPowerUpTime >= POWER_UP_INTERVAL) {
+                // Reset power up stats
                 powerUpUsed = false;
-                powerUpStored = false;  // Add this line
-                
-                if (!powerUpAvailable) {
-                    powerUp = (int)(Math.random() * 2) + 1;
-                    storePowerUps(powerUp);
-                    gameInterface.powerUpAvailable(powerUp);
+                powerUpStored = false; 
+
+                // Give user a random powerup
+                powerUp = (int)(Math.random() * 3) + 1; // Get random number between 1 and 3
+
+                if(powerUp == 1 || powerUp == 2){ // Store line destroyer/slow time
+                    storePowerUps(powerUp); // Store powerup
+                    gameInterface.powerUpAvailable(powerUp); // Draw powerup
                     lastPowerUpTime = currentTime;
+                    if(powerUp == 1){
+                        lineDestroyerAvailable = false; // Override previous powerup
+                    }
+                    if(powerUp == 2){
+                        slowTimeAvailable = false; // Override previous powerup
+                    }
+                }
+                else if(powerUp == 3){ // Trigger cheese attack
+                    grid.addCheese();
+                    lastPowerUpTime = currentTime;
+                    powerUpAvailable = false;
+                    slowTimeAvailable = false;
+                    lineDestroyerAvailable = false;
+                    powerUpUsed = true;
+                    gameInterface.triggerPowerUpText(powerUp);
                 }
             }
         
@@ -684,7 +714,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 powerUpAvailable = true;
             }
     
-            powerUpStored = true; // Set the flag to indicate the power-up has been stored
+            powerUpStored = true; // Set flag to indicate the power-up has been stored
         }
     }
 
@@ -702,6 +732,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                     gameInterface.triggerPowerUpText(2);
                     break;
             }
+            // Set power up variables
             powerUpAvailable = false;
             lineDestroyerAvailable = false;
             slowTimeAvailable = false;
@@ -761,12 +792,13 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
     //Method to immediately drop the piece to the bottom of the screen when the user presses space
     private void hardDrop() {
+        // Move piece until it collides with something
         while (!checkCollision(pieceX, pieceY + 1)) {
             pieceY++;
             score++;
         }
         SoundManager.playSound("sfx/harddrop.wav");
-        grid.addPiece(currentPiece, pieceX, pieceY);
+        grid.addPiece(currentPiece, pieceX, pieceY); // Add dropped piece to grid
 
         if (lineDestroyerActive) {
             grid.clearSurroundingBlocks(currentPiece, pieceX, pieceY);
@@ -791,7 +823,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         grid.clearFullLines(); // Clear lines in the grid
         controlGravity(); // Track levels
         currentLinesCleared = grid.getLinesCleared() - previousLinesCleared;
-        totalLinesCleared += currentLinesCleared;
 
         //Track back to backs
         if(currentLinesCleared == 4){
@@ -881,6 +912,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private void calculateScore(boolean isTspin){
         double backToBackMultiplier;
 
+        // Add score based on b2b
         if(backToBackCounter > 1){
             backToBackMultiplier = 1.5;
         }
@@ -925,6 +957,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             score += 800 * level * backToBackMultiplier;
         }
 
+        // All clear
         if(isGridEmpty()){
             score += 3500 * level;
             SoundManager.playSound("sfx/clearspin.wav");
@@ -937,7 +970,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         score += 2 * harddropDistance; //2 points per cell dropped
     }
 
-    //Method to check if the Grid is empty or not
+    //Method to check if the Grid is empty or not (for all clears)
     private boolean isGridEmpty(){
         for(int row = 0; row < Grid.ROWS; row++){
             for(int col = 0; col < Grid.COLS; col++){
@@ -953,6 +986,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private void movePieceHorizontally(int direction) {
         if (!checkCollision(pieceX + direction, pieceY)) {
             pieceX += direction;
+
+            // Reset lock delay time when moving piece
             if (isLockDelayActive) {
                 currentLockDelayTime = 0;
                 movementCounter++;
@@ -1111,36 +1146,40 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
 
         if (!isCountingdown && isInGame()) {
             switch (e.getKeyCode()) {
-                case KeyEvent.VK_LEFT:
+                case KeyEvent.VK_LEFT: // Move piece left
                     leftKeyPressed = true;
                     lastKeyPressed = -1; // Left arrow is now the last key pressed
-                    dasCharge = 0;
-                    movePieceHorizontally(-1);
+                    dasCharge = 0; // Reset das charge when moving
+                    movePieceHorizontally(-1); // Move piece left
                     pieceWasMoved = true;
-                    lastKeyValidRotation = false;
+                    lastKeyValidRotation = false; // Last move was not a rotation (for Tspin checks)
                     break;
         
-                case KeyEvent.VK_RIGHT:
+                case KeyEvent.VK_RIGHT: // Move piece right
                     rightKeyPressed = true;
                     lastKeyPressed = 1; // Right arrow is now the last key pressed
-                    dasCharge = 0;
+                    dasCharge = 0; // Reset das charge when moving
                     movePieceHorizontally(1);
-                    pieceWasMoved = true;
-                    lastKeyValidRotation = false;
+                    pieceWasMoved = true; 
+                    lastKeyValidRotation = false; // Last move was not a rotation (for Tspin checks)
                     break;
         
-                case KeyEvent.VK_SHIFT:
+                case KeyEvent.VK_SHIFT: // Soft drop peice
                     softDropActive = true;
                     break;
         
-                case KeyEvent.VK_UP:
+                case KeyEvent.VK_UP: // Rotate piece clockwise
                     currentPiece.rotateCW();
                     pieceWasMoved = true;
                     movementCounter++;
-                    lastKeyValidRotation = true;
+                    lastKeyValidRotation = true; // Last move was a rotation
+
+                    // Detect if user is attempting Tspin
                     if(isTSpin()){
                         SoundManager.playSound("sfx/spin.wav");
                     }
+
+                    // Check if can rotate (reverse if can't)
                     if (!performWallKick()) {
                         currentPiece.rotateCCW();
                         lastKeyValidRotation = false;
@@ -1148,24 +1187,30 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                     
                     break;
         
-                case KeyEvent.VK_DOWN:
+                case KeyEvent.VK_DOWN: // Rotate piece counterclockwise
                     currentPiece.rotateCCW();
                     pieceWasMoved = true;
                     movementCounter++;
-                    lastKeyValidRotation = true;
+                    lastKeyValidRotation = true; // Last move was a rotation
+
+                    // Detect if user is attempting Tspin
                     if(isTSpin()){
                         SoundManager.playSound("sfx/spin.wav");
                     }
+
+                    // Check if can rotate (reverse if can't)
                     if (!performWallKick()) {
                         currentPiece.rotateCW();
                         lastKeyValidRotation = false;
                     }
                     break;
         
-                case KeyEvent.VK_X:
+                case KeyEvent.VK_X: // Rotate piece 180°
                     currentPiece.rotateFlip();
-                    lastKeyValidRotation = false;
+                    lastKeyValidRotation = false; // T-spins can't be from 180° spins
                     pieceWasMoved = true;
+
+                    // Specific wall kick logic for 180° rotation
                     if (checkCollision(pieceX, pieceY)) {
                         if(tryWallKick(-1, 0)) return;
                         if(tryWallKick(1, 0)) return;
@@ -1173,24 +1218,24 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                     }
                     break;
         
-                case KeyEvent.VK_SPACE:
+                case KeyEvent.VK_SPACE: // Harddrop piece
                     hardDrop();
                     break;
 
-                case KeyEvent.VK_V:
-                    if(powerUpAvailable){
+                case KeyEvent.VK_V: // Use powerup
+                    if(powerUpAvailable){ // Check if there is powerup available
                         if(slowTimeAvailable){
-                            activatePowerUp(1);
+                            activatePowerUp(1); // Activate slow time
                         }
                         else if(lineDestroyerAvailable){
-                            activatePowerUp(2);
+                            activatePowerUp(2); // Activate line destroyer
 
                         }
 
                     }
                     break;
 
-                case KeyEvent.VK_C:
+                case KeyEvent.VK_C: // Hold piece
                     holdPiece();
                     lastKeyValidRotation = false;
                     break;
@@ -1210,7 +1255,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     //Key Released method to check for when a key is released
     public void keyReleased(KeyEvent e) {
         switch (e.getKeyCode()) {
-            case KeyEvent.VK_LEFT:
+            case KeyEvent.VK_LEFT: // Movement logic
                 leftKeyPressed = false;
                 if (lastKeyPressed == -1) {
                     if (rightKeyPressed) {
@@ -1222,7 +1267,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 dasCharge = 0;
                 break;
     
-            case KeyEvent.VK_RIGHT:
+            case KeyEvent.VK_RIGHT: // Movement logic
                 rightKeyPressed = false;
                 if (lastKeyPressed == 1) {
                     if (leftKeyPressed) {
@@ -1235,7 +1280,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 break;
     
             case KeyEvent.VK_SHIFT:
-                softDropActive = false;
+                softDropActive = false; // Stop soft drop if not holding
                 break;
         }
     }

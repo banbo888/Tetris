@@ -688,7 +688,7 @@ public class MenuScreen extends JPanel {
             - Right Arrow: Move piece right
             - Up Arrow: Rotate piece clockwise
             - Down Arrow: Rotate piece counterclockwise
-            - X: Flip piece 180°
+            - X: Flip piece 180 degrees
             - SHIFT: Soft drop
             - SPACE: Hard drop (instantly place piece)
             - C: Hold piece

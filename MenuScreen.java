@@ -678,18 +678,17 @@ public class MenuScreen extends JPanel {
             - Perfect for experimenting with piece placements and strategies.
 
         4) CHALLENGE MODE
-            - User tries to survive as long as possible, gravity increases as time goes on
+            - Special tasks like clearing lines in limited moves, or specific line clears.
             - Power-Ups include:
                 * Slow Down Time: temporarily slows falling speed.
                 * Line Destroyer: removes blocks around your placed piece.
-            - Challenges include: Cheese attack! Garbage simulated for user to clear
 
         CONTROLS
             - Left Arrow: Move piece left
             - Right Arrow: Move piece right
             - Up Arrow: Rotate piece clockwise
             - Down Arrow: Rotate piece counterclockwise
-            - X: Flip piece 180 degrees
+            - X: Flip piece 180°
             - SHIFT: Soft drop
             - SPACE: Hard drop (instantly place piece)
             - C: Hold piece

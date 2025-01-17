@@ -678,10 +678,11 @@ public class MenuScreen extends JPanel {
             - Perfect for experimenting with piece placements and strategies.
 
         4) CHALLENGE MODE
-            - Special tasks like clearing lines in limited moves, or specific line clears.
+            - User tries to survive as long as possible, gravity increases as time goes on
             - Power-Ups include:
                 * Slow Down Time: temporarily slows falling speed.
                 * Line Destroyer: removes blocks around your placed piece.
+            - Challenges include: Cheese attack! Garbage simulated for user to clear
 
         CONTROLS
             - Left Arrow: Move piece left

@@ -1,6 +1,6 @@
 //ICS Summative - Tetris by Richard Xiong & Eric Ma
-//Beta Program Submission
-//2025-01-09
+//Final Program Submission
+//2025-01-16
 //GameFrame Class - Creates the main window that will host the Tetris game panel, setting up the basic window properties and displaying the game.
 
 import javax.swing.*;

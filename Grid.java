@@ -1,9 +1,10 @@
 //ICS Summative - Tetris by Richard Xiong & Eric Ma
-//Beta Program Submission
-//2025-01-09
+//Final Program Submission
+//2025-01-16
 //Grid Class - Manages the Tetris grid, including the background, tetrominoes, and line clearing mechanisms.
 
 import java.awt.*;
+import java.util.Random;
 
 public class Grid {
     public static final int ROWS = 20; // Number of rows in the grid
@@ -221,13 +222,12 @@ public class Grid {
         int[][] shape = piece.getShape();
         
         // Calculate the area to clear (one block radius around the piece)
-        for (int row = pieceY - 1; row <= pieceY + shape.length; row++) {
-            for (int col = pieceX - 1; col <= pieceX + shape[0].length; col++) {
+        for (int row = pieceY - 5; row <= pieceY + shape.length; row++) {
+            for (int col = pieceX - 5; col <= pieceX + shape[0].length; col++) {
                 // Skip if outside grid bounds
                 if (row < 0 || row >= ROWS || col < 0 || col >= COLS) {
                     continue;
                 }
-                
                 // Clear all cells in the area, including the piece itself
                 clearCell(row, col);
             }
@@ -253,6 +253,73 @@ public class Grid {
         }
         return false; // Return false if no cells in the row are occupied
     }
+
+    public void addCheese() {
+        // Create a temporary grid to store current grid state
+        int[][] tempGrid = new int[Grid.ROWS][Grid.COLS];
+        Color[][] tempColors = new Color[Grid.ROWS][Grid.COLS];
+
+        int rowsToShiftUp; // Variable for rows to shift up
+    
+        Random rand = new Random(); // Random num generator (random blocks of cheese)
+        Color cheeseColor = Color.GRAY; // Use gray color for cheese blocks
+    
+        // Step 1: Find the highest occupied row
+        int highestOccupiedRow = -1;
+        for (int row = 0; row < Grid.ROWS; row++) {
+            if (isRowOccupied(row)) {
+                highestOccupiedRow = row;
+            }
+        }
+    
+        // Calculate how many rows to shift up
+        rowsToShiftUp = Math.max(0, highestOccupiedRow - 15);
+    
+        //Shift existing grid contents up by rowsToShiftUp
+        for (int row = 0; row < Grid.ROWS - rowsToShiftUp; row++) {
+            for (int col = 0; col < Grid.COLS; col++) {
+                tempGrid[row][col] = grid[row + rowsToShiftUp][col];
+                tempColors[row][col] = colors[row + rowsToShiftUp][col];
+            }
+        }
+    
+        // Clear the rows above the shifted rows
+        for (int row = Grid.ROWS - rowsToShiftUp; row < Grid.ROWS; row++) {
+            for (int col = 0; col < Grid.COLS; col++) {
+                tempGrid[row][col] = 0;
+                tempColors[row][col] = Color.BLACK;
+            }
+        }
+    
+        // Add 10 lines of cheese at the bottom
+        for (int row = Grid.ROWS - 10; row < Grid.ROWS; row++) {
+            // For each line, choose a random hole position
+            int holePosition = rand.nextInt(Grid.COLS);
+    
+            // Fill the row with blocks except for the hole
+            for (int col = 0; col < Grid.COLS; col++) {
+                if (col != holePosition) {
+                    tempGrid[row][col] = 1;
+                    tempColors[row][col] = cheeseColor;
+                } else {
+                    tempGrid[row][col] = 0;
+                    tempColors[row][col] = Color.BLACK;
+                }
+            }
+        }
+    
+        // Update the original grid with the temp grid
+        for (int row = 0; row < Grid.ROWS; row++) {
+            for (int col = 0; col < Grid.COLS; col++) {
+                grid[row][col] = tempGrid[row][col];
+                colors[row][col] = tempColors[row][col];
+            }
+        }
+    }
+    
+    
+
+
     public void draw(Graphics g, int offsetX, int offsetY) {
         // Draw buffer grid blocks (if they exist)
         for (int row = 0; row < BUFFER_ROWS; row++) {

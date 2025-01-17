@@ -679,13 +679,13 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                     }
                 }
                 else if(powerUp == 3){ // Trigger cheese attack
-                    grid.addCheese();
-                    lastPowerUpTime = currentTime;
+                    grid.addCheese(); // Add cheese
+                    lastPowerUpTime = currentTime; // Set power up variables
                     powerUpAvailable = false;
                     slowTimeAvailable = false;
                     lineDestroyerAvailable = false;
                     powerUpUsed = true;
-                    gameInterface.triggerPowerUpText(powerUp);
+                    gameInterface.triggerPowerUpText(powerUp); // Trigger powerup text
                 }
             }
         

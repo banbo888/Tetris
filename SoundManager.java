@@ -1,7 +1,8 @@
 //ICS Summative - Tetris by Richard Xiong & Eric Ma
-//Beta Program Submission
-//2025-01-09
+//Final Program Submission
+//2025-01-16
 //SoundManager Class - manages the playback of background music and sound effects, including controlling their volume levels and handling audio resources.
+
 import java.io.File;
 import java.io.IOException;
 import javax.sound.sampled.AudioInputStream;

@@ -1,6 +1,6 @@
 //ICS Summative - Tetris by Richard Xiong & Eric Ma
-//Beta Program Submission
-//2025-01-09
+//Final Program Submission
+//2025-01-16
 //SettingsManager Class - Manages game settings such as auto-repeat rate, delayed auto shift, soft drop speed, audio volumes, grid and ghost piece visibility, and action text visibility, providing getter and setter methods for each setting.
 
 public class SettingsManager {
@@ -19,9 +19,9 @@ public class SettingsManager {
     public SettingsManager() {
         sound = new SoundManager(); // Initialize sound manager for handling sound settings
         // Default settings values
-        this.arr = 1; // Default auto-repeat rate
-        this.das = 4; // Default delayed auto shift value
-        this.sdf = 1000; // Default soft drop factor value
+        this.arr = 2; // Default auto-repeat rate
+        this.das = 7; // Default delayed auto shift value
+        this.sdf = 6; // Default soft drop factor value
         this.musicVolume = 50; // Default music volume (out of 100)
         this.sfxVolume = 50; // Default sound effect volume (out of 100)
         this.audioEnabled = true; // Default is audio enabled

@@ -1,6 +1,6 @@
 //ICS Summative - Tetris by Richard Xiong & Eric Ma
-//Beta Program Submission
-//2025-01-09
+//Final Program Submission
+//2025-01-16
 //GameInterface Class - Manages the display and updates of game-related information, including the current piece, held piece, upcoming pieces, game stats, action texts, and power-up notifications.
 
 import java.awt.*;
@@ -75,9 +75,11 @@ public class GameInterface {
         powerUpFadeAlpha = 1.0f; // Reset fade alpha to full opacity
         powerUpFadeTimer.restart(); // Restart the fade timer
         if (powerUp == 1) {
-            powerUpActiveText = "SLOW MODE ACTIVATED!"; // Set text for slow mode power-up
+            powerUpActiveText = "SLOW MODE"; // Set text for slow mode power-up
         } else if (powerUp == 2) {
-            powerUpActiveText = "LINE DESTROYER ACTIVATED!"; // Set text for line destroyer power-up
+            powerUpActiveText = "LINE DESTROYER"; // Set text for line destroyer power-up
+        } else if (powerUp == 3){
+            powerUpActiveText = "CHEESE ATTACK!"; // Set text for Cheese Attack
         }
     }
 

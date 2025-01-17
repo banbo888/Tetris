@@ -1,6 +1,6 @@
 //ICS Summative - Tetris by Richard Xiong & Eric Ma
-//Beta Program Submission
-//2025-01-09
+//Final Program Submission
+//2025-01-16
 //Tetromino Class - Manages the 7 possible tetrominoes (i.e. color, rotations, width, length, pixel size).
 
 import java.awt.*;
@@ -98,7 +98,6 @@ public class Tetromino {
         // 0 -> L
         {{0, 0}, {1, 0}, {-2, 0}, {1, -2}, {-2, 1}}
     };
-
 
     public Tetromino(int index, Color color) {
         this.index = index; // Initialize the index field

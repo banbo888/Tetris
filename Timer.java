@@ -1,6 +1,6 @@
 //ICS Summative - Tetris by Richard Xiong & Eric Ma
-//Beta Program Submission
-//2025-01-09
+//Final Program Submission
+//2025-01-16
 //Timer Class - Provides functionality to start, stop, reset, and measure elapsed time, as well as format the elapsed time and calculate the remaining time.
 
 public class Timer {

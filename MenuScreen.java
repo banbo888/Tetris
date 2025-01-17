@@ -1,6 +1,6 @@
 //ICS Summative - Tetris by Richard Xiong & Eric Ma
-//Beta Program Submission
-//2025-01-09
+//Final Program Submission
+//2025-01-16
 //Menu Class - Manages the Menu, which allows users to start the game, see high scores, manage setings, and view instructions.
 
 import javax.swing.*;
@@ -75,9 +75,10 @@ public class MenuScreen extends JPanel {
         add(buttonsPanel, BorderLayout.CENTER);
     }
 
+    //Method to create menu button
     private JButton createMenuButton(String text) {
         JButton button = new JButton(text);
-        Dimension buttonSize = new Dimension(300, 70);  // Adjust these values as needed
+        Dimension buttonSize = new Dimension(300, 70);  
 
         button.setFocusPainted(false);
         button.setFont(new Font("Arial", Font.BOLD, 24));
@@ -452,6 +453,7 @@ public class MenuScreen extends JPanel {
         repaint();
     }
 
+    // Highscore Screen
     private void showHighscoresScreen(GamePanel gamePanel) {
         JLabel highscoresTitle;
         JPanel togglePanel, scoresContainer, timetrialScores, sprintScores, displayScoresPanel, backButtonPanel;
@@ -624,6 +626,7 @@ public class MenuScreen extends JPanel {
         return panel;
     }    
 
+    // Instruction screen
     private void showInstructionsScreen(GamePanel gamePanel) {
         JLabel instructionsTitle;
         JPanel contentPanel, backButtonPanel;
